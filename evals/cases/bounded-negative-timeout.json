@@ -1,0 +1,36 @@
+{
+  "name": "bounded-negative-timeout",
+  "cases": [
+    {
+      "id": "negative-timeout",
+      "category": "validation",
+      "difficulty": "easy",
+      "fixture": "negative-timeout",
+      "eligibility": "eligible",
+      "expected_status": "SUCCESS",
+      "expected_files": ["config.py"],
+      "patch_file": "patches/negative-timeout.diff",
+      "task": {
+        "task_id": "eval-negative-timeout",
+        "task_kind": "bounded_bugfix",
+        "risk_flags": [],
+        "objective": "Reject negative timeout values while preserving zero and positive values.",
+        "allowed_files": ["config.py"],
+        "context": ["config.py", "test_config.py"],
+        "requirements": [
+          "Negative values raise ValueError.",
+          "Zero and positive values return their integer value."
+        ],
+        "constraints": [
+          "Do not change the function name.",
+          "Do not touch files outside allowed_files."
+        ],
+        "verification": ["pytest -q"],
+        "success_criteria": [
+          "All tests pass.",
+          "Only config.py changes."
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "task_id": "goal-supervisor-label",
+  "task_kind": "mechanical",
+  "risk_flags": [],
+  "objective": "In the Mission section of GOAL.md, change the phrase 'Codex or another frontier coding agent' to 'Codex or Claude (or another frontier coding agent)'. Preserve every other character and line.",
+  "allowed_files": ["GOAL.md"],
+  "context": ["GOAL.md"],
+  "requirements": [
+    "The phrase 'Codex or Claude (or another frontier coding agent)' is present.",
+    "The old phrase 'Codex or another frontier coding agent' is absent.",
+    "Keep the change limited to the requested sentence in GOAL.md."
+  ],
+  "constraints": [
+    "Make the smallest valid documentation-only diff.",
+    "Do not edit, commit, push, deploy, or change any other file.",
+    "Do not rewrite or reformat the surrounding document."
+  ],
+  "verification": [
+    "py -3 -c \"from pathlib import Path; t=Path('GOAL.md').read_text(encoding='utf-8'); assert 'Codex or Claude (or another frontier coding agent)' in t; assert 'Codex or another frontier coding agent' not in t\""
+  ],
+  "success_criteria": [
+    "The requested phrase replacement is present.",
+    "The declared verification command passes.",
+    "Only GOAL.md changes in the disposable sandbox."
+  ],
+  "retry_limit": 1
+}

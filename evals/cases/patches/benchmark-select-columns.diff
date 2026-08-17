@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -94,3 +94,3 @@
+ def select_columns(row: dict[str, Any]) -> dict[str, Any]:
+-    return {"name": row["name"]}
++    return {"id": row["id"], "name": row["name"]}
+ 

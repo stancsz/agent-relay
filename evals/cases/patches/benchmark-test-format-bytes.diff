@@ -1,0 +1,11 @@
+diff --git a/tests/test_helpers.py b/tests/test_helpers.py
+--- a/tests/test_helpers.py
++++ b/tests/test_helpers.py
+@@ -35,3 +35,7 @@
+ def test_format_bytes():
+     assert format_bytes(512) == "512 B"
+     assert format_bytes(2048) == "2.0 KB"
++
++
++def test_format_bytes_zero():
++    assert format_bytes(0) == "0 B"

@@ -1,0 +1,7 @@
+diff --git a/math_types.py b/math_types.py
+--- a/math_types.py
++++ b/math_types.py
+@@ -1,2 +1,2 @@
+ def scale(value: int, factor: int) -> int:
+-    return str(value * factor)  # type: ignore[return-value]
++    return value * factor

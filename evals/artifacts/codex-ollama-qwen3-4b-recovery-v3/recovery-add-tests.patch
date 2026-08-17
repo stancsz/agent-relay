@@ -1,0 +1,12 @@
+diff --git a/tests/test_normalize.py b/tests/test_normalize.py
+index 9f47af7..f5c38a8 100644
+--- a/tests/test_normalize.py
++++ b/tests/test_normalize.py
+@@ -6,3 +6,7 @@ from normalize import normalize
+ def test_normal_input() -> None:
+     assert normalize(" Hello ") == "hello"
+ 
++{
++  "response": "The previous patch incorrectly modified the file by removing existing content. To fix this, the two new tests should be appended after the existing test function while preserving the original lines. Here's the corrected patch:\n\n--- a/tests/test_normalize.py\n+++ b/tests/test_normalize.py\n@@ -5,5 +5,10 @@\ndef test_normal_input() -> None:\n    assert normalize(\" Hello \") == \"hello\"\n+\ndef test_empty_input() -> None:\n+    assert normalize(\"\") == \"\"\n+\ndef test_malformed_input() -> None:\n+    with pytest.raises((AttributeError, TypeError)):\n+        normalize(None)",
++  "explanation": "The error occurred because the previous patch removed the existing test function and imports, causing a syntax error. The fix preserves the original file structure and adds the two new tests after the existing `test_normal_input` function with proper indentation and newlines."
++}

@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -131,3 +131,3 @@
+ def serialize_user(user: dict[str, str]) -> dict[str, str]:
+-    return {"name": user["name"]}
++    return {"name": user["name"], "email": user["email"]}
+ 

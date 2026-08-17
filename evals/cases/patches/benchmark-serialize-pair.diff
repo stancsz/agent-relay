@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -82,3 +82,3 @@
+ def serialize_pair(left: str, right: str) -> str:
+-    return f"{left}:{right}"
++    return f"left={left};right={right}"
+ 

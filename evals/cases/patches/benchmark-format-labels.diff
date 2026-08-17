@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -86,3 +86,3 @@
+ def format_labels(labels: list[str]) -> str:
+-    return ",".join(labels)
++    return ", ".join(label.strip().lower() for label in labels)
+ 

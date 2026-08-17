@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -119,3 +119,3 @@
+ def read_timeout(config: dict[str, Any]) -> int:
+-    return config.get("timeout", 10)
++    return config.get("timeout", 30)
+ 

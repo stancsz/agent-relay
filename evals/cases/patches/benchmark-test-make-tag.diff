@@ -1,0 +1,10 @@
+diff --git a/tests/test_helpers.py b/tests/test_helpers.py
+--- a/tests/test_helpers.py
++++ b/tests/test_helpers.py
+@@ -48,2 +48,6 @@
+ def test_make_tag():
+     assert make_tag("item") == "<item>"
++
++
++def test_make_tag_empty_name():
++    assert make_tag("") == "<>"

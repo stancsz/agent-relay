@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -90,3 +90,3 @@
+ def add_headers(rows: list[list[str]]) -> list[list[str]]:
+-    return [["name"] + row for row in rows]
++    return [["name", "email"], *rows]
+ 

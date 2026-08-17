@@ -1,0 +1,13 @@
+diff --git a/tests/test_normalize.py b/tests/test_normalize.py
+index 9f47af7..528e6c4 100644
+--- a/tests/test_normalize.py
++++ b/tests/test_normalize.py
+@@ -6,3 +6,8 @@ from normalize import normalize
+ def test_normal_input() -> None:
+     assert normalize(" Hello ") == "hello"
+ 
++def test_empty_input() -> None:
++    assert normalize("") == ""
++def test_none_input() -> None:
++    with pytest.raises((AttributeError, TypeError)):
++        normalize(None)

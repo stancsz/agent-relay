@@ -1,0 +1,9 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -115,3 +115,3 @@
+-def is_even(value: int) -> int:
+-    return value % 2
++def is_even(value: int) -> bool:
++    return value % 2 == 0
+ 

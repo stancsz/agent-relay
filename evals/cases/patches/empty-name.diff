@@ -1,0 +1,9 @@
+diff --git a/names.py b/names.py
+--- a/names.py
++++ b/names.py
+@@ -1,2 +1,4 @@
+ def first_name(names: list[str]) -> str:
++    if not names:
++        raise ValueError("names must not be empty")
+     return names[0]
+

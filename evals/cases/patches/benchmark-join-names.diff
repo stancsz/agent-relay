@@ -1,0 +1,7 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -106,2 +106,2 @@
+-def join_names(values: list) -> str:
++def join_names(values: list[str]) -> str:
+     return ", ".join(values)

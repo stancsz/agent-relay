@@ -1,0 +1,10 @@
+diff --git a/tests/test_helpers.py b/tests/test_helpers.py
+--- a/tests/test_helpers.py
++++ b/tests/test_helpers.py
+@@ -31,2 +31,6 @@
+ def test_parse_csv_line():
+     assert parse_csv_line("a, b, c") == ["a", "b", "c"]
++
++
++def test_parse_csv_single_value():
++    assert parse_csv_line("a") == ["a"]

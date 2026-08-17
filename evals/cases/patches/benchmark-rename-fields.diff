@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -78,3 +78,3 @@
+ def rename_fields(record: dict[str, Any]) -> dict[str, Any]:
+-    return {"first": record["first_name"], "last": record["last_name"]}
++    return {"first": record["first_name"], "last": record["last_name"], "email": record["email"]}
+ 

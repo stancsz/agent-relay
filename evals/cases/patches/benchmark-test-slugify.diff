@@ -1,0 +1,10 @@
+diff --git a/tests/test_helpers.py b/tests/test_helpers.py
+--- a/tests/test_helpers.py
++++ b/tests/test_helpers.py
+@@ -18,2 +18,6 @@
+ def test_slugify():
+     assert slugify("Hello   World") == "hello-world"
++
++
++def test_slugify_already_normalized():
++    assert slugify("already-slug") == "already-slug"

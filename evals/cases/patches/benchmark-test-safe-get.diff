@@ -1,0 +1,10 @@
+diff --git a/tests/test_helpers.py b/tests/test_helpers.py
+--- a/tests/test_helpers.py
++++ b/tests/test_helpers.py
+@@ -44,2 +44,6 @@
+ def test_safe_get():
+     assert safe_get({"a": "1"}, "missing", "fallback") == "fallback"
++
++
++def test_safe_get_present_value():
++    assert safe_get({"a": "1"}, "a") == "1"

@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -74,3 +74,3 @@
+ def copy_metadata(record: dict[str, Any]) -> dict[str, Any]:
+-    return {"id": record["id"], "name": record["name"]}
++    return {"id": record["id"], "name": record["name"], "tags": list(record["tags"])}
+ 

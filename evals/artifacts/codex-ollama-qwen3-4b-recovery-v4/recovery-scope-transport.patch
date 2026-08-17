@@ -1,0 +1,8 @@
+diff --git a/settings.py b/settings.py
+index 40eaf72..db2b6c0 100644
+--- a/settings.py
++++ b/settings.py
+@@ -1,2 +1 @@
+-DEFAULT_TIMEOUT = 10
+-
++DEFAULT_TIMEOUT = 20

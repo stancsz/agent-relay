@@ -1,0 +1,11 @@
+diff --git a/tests/test_helpers.py b/tests/test_helpers.py
+--- a/tests/test_helpers.py
++++ b/tests/test_helpers.py
+@@ -26,3 +26,7 @@
+ def test_is_blank():
+     assert is_blank("  \t") is True
+     assert is_blank("x") is False
++
++
++def test_is_blank_nonempty_input():
++    assert is_blank("x") is False

@@ -1,0 +1,14 @@
+{
+  "tasks": [
+    {
+      "task": {
+        "task_id": "cli-batch-blocked",
+        "objective": "Change one value.",
+        "allowed_files": ["value.py"],
+        "verification": ["python -c \"assert True\""],
+        "success_criteria": ["Return BLOCKED because task_kind is missing."]
+      },
+      "expected_status": "BLOCKED"
+    }
+  ]
+}

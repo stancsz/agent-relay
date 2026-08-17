@@ -1,0 +1,10 @@
+diff --git a/tests/test_helpers.py b/tests/test_helpers.py
+--- a/tests/test_helpers.py
++++ b/tests/test_helpers.py
+@@ -40,2 +40,6 @@
+ def test_dedupe():
+     assert dedupe(["a", "b", "a"]) == ["a", "b"]
++
++
++def test_dedupe_empty_input():
++    assert dedupe([]) == []

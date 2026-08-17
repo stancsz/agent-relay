@@ -1,0 +1,11 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -20,3 +20,6 @@
+ def parse_bool(value: str) -> bool:
+-    return value.lower() == "true"
++    normalized = value.lower()
++    if normalized not in {"true", "false"}:
++        raise ValueError("expected true or false")
++    return normalized == "true"
+ 

@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -4,2 +4,4 @@
+ def require_nonempty(value: str) -> str:
++    if not value:
++        raise ValueError("value must not be empty")
+     return value

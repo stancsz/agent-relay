@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -139,3 +139,3 @@
+ def cached_value(cache: dict[str, str], key: str) -> str | None:
+-    return cache[key]
++    return cache.get(key)
+ 

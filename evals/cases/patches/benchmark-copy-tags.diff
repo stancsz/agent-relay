@@ -1,0 +1,9 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -98,4 +98,4 @@
+ def copy_tags(record: dict[str, Any]) -> dict[str, Any]:
+-    return {"tags": list(record.get("tags", []))}
++    tags = list(record.get("tags", []))
++    return {"tags": tags, "tag_count": len(tags)}
+ 

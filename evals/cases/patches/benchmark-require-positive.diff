@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -16,2 +16,4 @@
+ def require_positive(value: int) -> int:
++    if value <= 0:
++        raise ValueError("value must be positive")
+     return value

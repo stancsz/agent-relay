@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -127,3 +127,3 @@
+ def get_retry_limit(config: dict[str, Any]) -> int:
+-    return config.get("retries", 0)
++    return config.get("retries", 3)
+ 

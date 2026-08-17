@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -28,2 +28,4 @@
+ def safe_slice(items: list[str], start: int, end: int) -> list[str]:
++    if start < 0 or end < start:
++        raise ValueError("invalid slice bounds")
+     return items[start:end]

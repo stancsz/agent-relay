@@ -1,0 +1,14 @@
+{
+  "task_id": "cli-triage-smoke",
+  "task_kind": "bounded_bugfix",
+  "risk_flags": [],
+  "objective": "Reject negative timeout values while preserving zero and positive values.",
+  "allowed_files": ["src/config.py", "tests/test_config.py"],
+  "requirements": [
+    "Negative values raise ValueError.",
+    "Zero and positive values remain valid."
+  ],
+  "constraints": ["Make the smallest valid change."],
+  "verification": ["pytest tests/test_config.py"],
+  "success_criteria": ["The declared verification command exits 0."]
+}

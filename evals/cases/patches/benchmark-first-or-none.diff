@@ -1,0 +1,7 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -143,2 +143,2 @@
+ def first_or_none(items: list[str]) -> str | None:
+-    return items[0]
++    return items[0] if items else None

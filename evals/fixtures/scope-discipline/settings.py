@@ -1,0 +1,2 @@
+DEFAULT_TIMEOUT = 10
+

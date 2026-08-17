@@ -1,0 +1,10 @@
+diff --git a/math_utils.py b/math_utils.py
+--- a/math_utils.py
++++ b/math_utils.py
+@@ -3,5 +3,5 @@
+ 
+ 
+ def use_add(a: int, b: int) -> int:
+-    return old_add(a, b)
++    return add(a, b)
+

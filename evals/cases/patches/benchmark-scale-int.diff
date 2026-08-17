@@ -1,0 +1,7 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -102,2 +102,2 @@
+-def scale_int(value: int, factor: int) -> float:
++def scale_int(value: int, factor: int) -> int:
+     return value * factor

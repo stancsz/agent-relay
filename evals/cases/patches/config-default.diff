@@ -1,0 +1,8 @@
+diff --git a/config.py b/config.py
+--- a/config.py
++++ b/config.py
+@@ -1,2 +1,2 @@
+ def get_timeout(config: dict[str, int]) -> int:
+-    return config["timeout"]
++    return config.get("timeout", 30)
+

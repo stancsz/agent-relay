@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -24,2 +24,4 @@
+ def nonnegative_count(value: int) -> int:
++    if value < 0:
++        raise ValueError("count must not be negative")
+     return value

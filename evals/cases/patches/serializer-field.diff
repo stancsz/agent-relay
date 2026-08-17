@@ -1,0 +1,13 @@
+diff --git a/serializers.py b/serializers.py
+--- a/serializers.py
++++ b/serializers.py
+@@ -1,6 +1,6 @@
+ def serialize_user(user: dict[str, object]) -> dict[str, object]:
+-    return {"name": user["name"]}
++    return {"name": user["name"], "active": user["active"]}
+ 
+ 
+ def serialize_admin(user: dict[str, object]) -> dict[str, object]:
+-    return {"name": user["name"]}
++    return {"name": user["name"], "active": user["active"]}
+

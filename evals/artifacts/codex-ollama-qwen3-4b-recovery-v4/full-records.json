@@ -1,0 +1,604 @@
+{
+  "suite": "bounded-recovery",
+  "backend": "codex-ollama",
+  "records": [
+    {
+      "id": "recovery-add-tests",
+      "task_id": "eval-recovery-add-tests",
+      "category": "protocol-recovery",
+      "difficulty": "medium",
+      "eligibility": "eligible",
+      "status": "SUCCESS",
+      "passed": true,
+      "reasons": [],
+      "files_changed": [
+        "tests/test_normalize.py"
+      ],
+      "attempts": 2,
+      "verification_passed": true,
+      "first_attempt_accepted": false,
+      "bounded_acceptance": true,
+      "scope_violation": false,
+      "scope_reviewed": null,
+      "substantial_codex_repair": null,
+      "blocked_result_correct": false,
+      "duration_seconds": 186.1586052000057,
+      "blockers": [],
+      "sandbox_mode": "copy",
+      "main_worktree_unchanged": true,
+      "attempt_history": [
+        {
+          "attempt": 1,
+          "status": "WORKER_ERROR",
+          "verification": [],
+          "files_changed": [],
+          "patch_bytes": 0,
+          "failure": "Codex CLI returned a malformed structured result: final result must contain a status or candidate\nPrevious final response preview:\n{\n  \"diff\": \"@@ -5,2 +5,7 @@\\n-    def test_normal_input() -> None:\\n-    assert normalize(\\\" Hello \\\") == \\\"hello\\\"\\n+\\n+    def test_empty_input() -> None:\\n+    assert normalize(\\\"\\\") == \\\"\\\"\\n+\\n+    def test_none_input() -> None:\\n+    with pytest.raises((AttributeError, TypeError)):\\n+        normalize(None)\"\n}",
+          "local_runtime": {
+            "model": "qwen3:4b",
+            "ollama_host": "http://127.0.0.1:11435",
+            "model_pull_allowed": false,
+            "output_schema_enabled": false,
+            "ollama_model_present": true,
+            "ollama_installed_models": [
+              "deepseek-r1:8b",
+              "gemma3n:e4b",
+              "ltx-2.3-q2k:latest",
+              "qwen3-coder:30b",
+              "qwen3-vl:4b",
+              "qwen3:4b",
+              "qwen3:8b"
+            ],
+            "codex_version": "codex-cli 0.87.0",
+            "provider": "codex-cli",
+            "local_provider": "ollama-chat",
+            "codex_exit_code": 0,
+            "codex_wall_clock_seconds": 91.39824330000556,
+            "wall_clock_seconds": 91.39824400001089,
+            "stdout_bytes": 627,
+            "stderr_bytes": 0,
+            "final_message_chars": 318,
+            "usage": {
+              "input_tokens": 0,
+              "cached_input_tokens": 0,
+              "output_tokens": 0
+            },
+            "inner_sandbox_mode": "copy",
+            "retry_model_used": false,
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "codex_tools_stripped": true,
+            "codex_prompt_compacted": true,
+            "ollama_num_ctx": null,
+            "ollama_num_predict": null,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 34565,
+              "bytes_forwarded": 4466,
+              "bytes_out": 1404365
+            },
+            "model_pull_detected": false,
+            "final_message_preview": "{\n  \"diff\": \"@@ -5,2 +5,7 @@\\n-    def test_normal_input() -> None:\\n-    assert normalize(\\\" Hello \\\") == \\\"hello\\\"\\n+\\n+    def test_empty_input() -> None:\\n+    assert normalize(\\\"\\\") == \\\"\\\"\\n+\\n+    def test_none_input() -> None:\\n+    with pytest.raises((AttributeError, TypeError)):\\n+        normalize(None)\"\n}"
+          }
+        },
+        {
+          "attempt": 2,
+          "status": "VERIFIED",
+          "verification": [
+            {
+              "command": "pytest -q",
+              "exit_code": 0,
+              "stdout": "...                                                                      [100%]\n3 passed in 0.02s\n",
+              "stderr": "",
+              "duration_seconds": 1.5873085999919567,
+              "timed_out": false,
+              "passed": true
+            }
+          ],
+          "files_changed": [
+            "tests/test_normalize.py"
+          ],
+          "patch_bytes": 457,
+          "local_runtime": {
+            "model": "qwen3:4b",
+            "ollama_host": "http://127.0.0.1:11435",
+            "model_pull_allowed": false,
+            "output_schema_enabled": false,
+            "ollama_model_present": true,
+            "ollama_installed_models": [
+              "deepseek-r1:8b",
+              "gemma3n:e4b",
+              "ltx-2.3-q2k:latest",
+              "qwen3-coder:30b",
+              "qwen3-vl:4b",
+              "qwen3:4b",
+              "qwen3:8b"
+            ],
+            "codex_version": "codex-cli 0.87.0",
+            "provider": "codex-cli",
+            "local_provider": "ollama-chat",
+            "codex_exit_code": 0,
+            "codex_wall_clock_seconds": 92.24849599998561,
+            "wall_clock_seconds": 92.24849629998789,
+            "stdout_bytes": 1624,
+            "stderr_bytes": 0,
+            "final_message_chars": 1282,
+            "usage": {
+              "input_tokens": 0,
+              "cached_input_tokens": 0,
+              "output_tokens": 0
+            },
+            "inner_sandbox_mode": "copy",
+            "retry_model_used": false,
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "codex_tools_stripped": true,
+            "codex_prompt_compacted": true,
+            "ollama_num_ctx": null,
+            "ollama_num_predict": null,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 35522,
+              "bytes_forwarded": 5423,
+              "bytes_out": 1396862
+            },
+            "model_pull_detected": false,
+            "final_message_preview": "The patch is a diff that shows the changes to be applied to the code. The task requires appending two new test functions after the existing test function.\n\nThe existing code snippet (lines 5-10) is:\n```\ndef test_normal_input() -> None:\n    assert normalize(\" Hello \") == \"hello\"\n```\n\nThe new code to be added (starting from line 11) is:\n```\ndef test_empty_input() -> None:\n    assert normalize(\"\") == \"\"\ndef test_none_input() -> None:\n    with pytest.raises((AttributeError, TypeError)):\n        normalize(None)\n```\n\nThis creates a valid diff patch. The diff format starts with `@@ -start1, count1 +start2, count2 @@`, where:\n- `start1 = 5` (the line number where changes begin in the original file)\n- `count1 = 6` (the number of lines changed in the original)\n- `start2 = 5` (the line number where changes begin in the new file)\n- `count2 = 11` (the number of lines changed in the new file)\n\nThe patch correctly appends the two new test functions after the existing function.\n\n\\boxed{\\text{@@ -5,6 +5,11 @@\\ndef test\\_normal\\_input() -> None:\\n    assert normalize(\\\" Hello \\\") == \\\"hello\\\"\\n+def test\\_empty\\_input() -> None:\\n+    assert normalize(\\\"\\\") == \\\"\\\"\\n+def test\\_none\\_input() -> None:\\n+    with pytest.raises((AttributeError, TypeError)):\\n+        normalize(None)}}",
+            "final_result_fallback": "reported_code_block",
+            "result_source": "reported_code_block"
+          }
+        }
+      ],
+      "context_chars": 249,
+      "local_runtime": {
+        "prompt_eval_count": 0,
+        "eval_count": 0,
+        "total_duration": 0,
+        "load_duration": 0,
+        "prompt_eval_duration": 0,
+        "eval_duration": 0,
+        "codex_wall_clock_seconds": 183.64673929999117,
+        "stdout_bytes": 2251,
+        "stderr_bytes": 0,
+        "model": "qwen3:4b",
+        "attempts": 2,
+        "wall_clock_seconds": 186.12682589999167,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "telemetry_source": "provider-reported-zero",
+        "providers": [
+          "codex-cli"
+        ],
+        "result_sources": [
+          "reported_code_block"
+        ],
+        "codex_version": "codex-cli 0.87.0",
+        "model_pull_detected": false
+      },
+      "verification": [
+        {
+          "command": "pytest -q",
+          "exit_code": 0,
+          "stdout": "...                                                                      [100%]\n3 passed in 0.02s\n",
+          "stderr": "",
+          "duration_seconds": 1.5873085999919567,
+          "timed_out": false,
+          "passed": true
+        }
+      ],
+      "patch": "diff --git a/tests/test_normalize.py b/tests/test_normalize.py\nindex 9f47af7..528e6c4 100644\n--- a/tests/test_normalize.py\n+++ b/tests/test_normalize.py\n@@ -6,3 +6,8 @@ from normalize import normalize\n def test_normal_input() -> None:\n     assert normalize(\" Hello \") == \"hello\"\n \n+def test_empty_input() -> None:\n+    assert normalize(\"\") == \"\"\n+def test_none_input() -> None:\n+    with pytest.raises((AttributeError, TypeError)):\n+        normalize(None)\n"
+    },
+    {
+      "id": "recovery-deprecated-call",
+      "task_id": "eval-recovery-deprecated-call",
+      "category": "protocol-recovery",
+      "difficulty": "easy",
+      "eligibility": "eligible",
+      "status": "SUCCESS",
+      "passed": true,
+      "reasons": [],
+      "files_changed": [
+        "math_utils.py"
+      ],
+      "attempts": 2,
+      "verification_passed": true,
+      "first_attempt_accepted": false,
+      "bounded_acceptance": true,
+      "scope_violation": false,
+      "scope_reviewed": null,
+      "substantial_codex_repair": null,
+      "blocked_result_correct": false,
+      "duration_seconds": 143.46063109999523,
+      "blockers": [],
+      "sandbox_mode": "copy",
+      "main_worktree_unchanged": true,
+      "attempt_history": [
+        {
+          "attempt": 1,
+          "status": "WORKER_ERROR",
+          "verification": [],
+          "files_changed": [],
+          "patch_bytes": 0,
+          "local_runtime": {
+            "model": "qwen3:4b",
+            "ollama_host": "http://127.0.0.1:11435",
+            "model_pull_allowed": false,
+            "output_schema_enabled": false,
+            "ollama_model_present": true,
+            "ollama_installed_models": [
+              "deepseek-r1:8b",
+              "gemma3n:e4b",
+              "ltx-2.3-q2k:latest",
+              "qwen3-coder:30b",
+              "qwen3-vl:4b",
+              "qwen3:4b",
+              "qwen3:8b"
+            ],
+            "codex_version": "codex-cli 0.87.0",
+            "provider": "codex-cli",
+            "local_provider": "ollama-chat",
+            "codex_exit_code": 0,
+            "codex_wall_clock_seconds": 72.6657524999755,
+            "wall_clock_seconds": 72.66575269997702,
+            "stdout_bytes": 491,
+            "stderr_bytes": 0,
+            "final_message_chars": 189,
+            "usage": {
+              "input_tokens": 0,
+              "cached_input_tokens": 0,
+              "output_tokens": 0
+            },
+            "inner_sandbox_mode": "copy",
+            "retry_model_used": false,
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "codex_tools_stripped": true,
+            "codex_prompt_compacted": true,
+            "ollama_num_ctx": null,
+            "ollama_num_predict": null,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 33961,
+              "bytes_forwarded": 3862,
+              "bytes_out": 1105659
+            },
+            "model_pull_detected": false,
+            "reported_patch_check_error": "patch did not contain recognizable file paths",
+            "result_source": "reported_patch"
+          }
+        },
+        {
+          "attempt": 2,
+          "status": "VERIFIED",
+          "verification": [
+            {
+              "command": "pytest -q",
+              "exit_code": 0,
+              "stdout": ".                                                                        [100%]\n1 passed in 0.02s\n",
+              "stderr": "",
+              "duration_seconds": 1.6023876999970526,
+              "timed_out": false,
+              "passed": true
+            }
+          ],
+          "files_changed": [
+            "math_utils.py"
+          ],
+          "patch_bytes": 271,
+          "local_runtime": {
+            "model": "qwen3:4b",
+            "ollama_host": "http://127.0.0.1:11435",
+            "model_pull_allowed": false,
+            "output_schema_enabled": false,
+            "ollama_model_present": true,
+            "ollama_installed_models": [
+              "deepseek-r1:8b",
+              "gemma3n:e4b",
+              "ltx-2.3-q2k:latest",
+              "qwen3-coder:30b",
+              "qwen3-vl:4b",
+              "qwen3:4b",
+              "qwen3:8b"
+            ],
+            "codex_version": "codex-cli 0.87.0",
+            "provider": "codex-cli",
+            "local_provider": "ollama-chat",
+            "codex_exit_code": 0,
+            "codex_wall_clock_seconds": 68.12192149998737,
+            "wall_clock_seconds": 68.12192159998813,
+            "stdout_bytes": 603,
+            "stderr_bytes": 0,
+            "final_message_chars": 292,
+            "usage": {
+              "input_tokens": 0,
+              "cached_input_tokens": 0,
+              "output_tokens": 0
+            },
+            "inner_sandbox_mode": "copy",
+            "retry_model_used": false,
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "codex_tools_stripped": true,
+            "codex_prompt_compacted": true,
+            "ollama_num_ctx": null,
+            "ollama_num_predict": null,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 34632,
+              "bytes_forwarded": 4533,
+              "bytes_out": 1025469
+            },
+            "model_pull_detected": false,
+            "result_source": "reported_files"
+          }
+        }
+      ],
+      "context_chars": 274,
+      "local_runtime": {
+        "prompt_eval_count": 0,
+        "eval_count": 0,
+        "total_duration": 0,
+        "load_duration": 0,
+        "prompt_eval_duration": 0,
+        "eval_duration": 0,
+        "codex_wall_clock_seconds": 140.78767399996286,
+        "stdout_bytes": 1094,
+        "stderr_bytes": 0,
+        "model": "qwen3:4b",
+        "attempts": 2,
+        "wall_clock_seconds": 143.42253120001988,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "telemetry_source": "provider-reported-zero",
+        "providers": [
+          "codex-cli"
+        ],
+        "result_sources": [
+          "reported_files",
+          "reported_patch"
+        ],
+        "codex_version": "codex-cli 0.87.0",
+        "model_pull_detected": false
+      },
+      "verification": [
+        {
+          "command": "pytest -q",
+          "exit_code": 0,
+          "stdout": ".                                                                        [100%]\n1 passed in 0.02s\n",
+          "stderr": "",
+          "duration_seconds": 1.6023876999970526,
+          "timed_out": false,
+          "passed": true
+        }
+      ],
+      "patch": "diff --git a/math_utils.py b/math_utils.py\nindex a8bb594..45587d7 100644\n--- a/math_utils.py\n+++ b/math_utils.py\n@@ -1,7 +1,5 @@\n def add(a: int, b: int) -> int:\n     return a + b\n \n-\n def use_add(a: int, b: int) -> int:\n-    return old_add(a, b)\n-\n+    return add(a, b)\n"
+    },
+    {
+      "id": "recovery-scope-transport",
+      "task_id": "eval-recovery-scope-transport",
+      "category": "protocol-recovery",
+      "difficulty": "easy",
+      "eligibility": "eligible",
+      "status": "SUCCESS",
+      "passed": true,
+      "reasons": [],
+      "files_changed": [
+        "settings.py"
+      ],
+      "attempts": 2,
+      "verification_passed": true,
+      "first_attempt_accepted": false,
+      "bounded_acceptance": true,
+      "scope_violation": false,
+      "scope_reviewed": null,
+      "substantial_codex_repair": null,
+      "blocked_result_correct": false,
+      "duration_seconds": 174.24342089999118,
+      "blockers": [],
+      "sandbox_mode": "copy",
+      "main_worktree_unchanged": true,
+      "attempt_history": [
+        {
+          "attempt": 1,
+          "status": "FAILED_VERIFICATION",
+          "verification": [
+            {
+              "command": "pytest -q",
+              "exit_code": 2,
+              "stdout": "\n=================================== ERRORS ====================================\n______________________ ERROR collecting test_settings.py ______________________\n..\\..\\..\\..\\Roaming\\Python\\Python314\\site-packages\\_pytest\\python.py:498: in importtestmodule\n    mod = import_path(\n..\\..\\..\\..\\Roaming\\Python\\Python314\\site-packages\\_pytest\\pathlib.py:587: in import_path\n    importlib.import_module(module_name)\nC:\\Program Files\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1398: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1371: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1342: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:938: in _load_unlocked\n    ???\n..\\..\\..\\..\\Roaming\\Python\\Python314\\site-packages\\_pytest\\assertion\\rewrite.py:186: in exec_module\n    exec(co, module.__dict__)\ntest_settings.py:1: in <module>\n    from settings import DEFAULT_TIMEOUT\nE     File \"C:\\Users\\stanc\\AppData\\Local\\Temp\\lcd-sandbox-fi9oe3jm\\copy\\settings.py\", line 1\nE       --- settings.py\\n+++ settings.py\\n@@ -1,1 @@\\n-DEFAULT_TIMEOUT = 10\\n+DEFAULT_TIMEOUT = 20\nE                       ^\nE   SyntaxError: unexpected character after line continuation character\n=========================== short test summary info ===========================\nERROR test_settings.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.21s\n",
+              "stderr": "",
+              "duration_seconds": 1.9691688000166323,
+              "timed_out": false,
+              "passed": false
+            }
+          ],
+          "files_changed": [
+            "settings.py"
+          ],
+          "patch_bytes": 235,
+          "local_runtime": {
+            "model": "qwen3:4b",
+            "ollama_host": "http://127.0.0.1:11435",
+            "model_pull_allowed": false,
+            "output_schema_enabled": false,
+            "ollama_model_present": true,
+            "ollama_installed_models": [
+              "deepseek-r1:8b",
+              "gemma3n:e4b",
+              "ltx-2.3-q2k:latest",
+              "qwen3-coder:30b",
+              "qwen3-vl:4b",
+              "qwen3:4b",
+              "qwen3:8b"
+            ],
+            "codex_version": "codex-cli 0.87.0",
+            "provider": "codex-cli",
+            "local_provider": "ollama-chat",
+            "codex_exit_code": 0,
+            "codex_wall_clock_seconds": 81.34474160001264,
+            "wall_clock_seconds": 81.3447417000134,
+            "stdout_bytes": 534,
+            "stderr_bytes": 0,
+            "final_message_chars": 226,
+            "usage": {
+              "input_tokens": 0,
+              "cached_input_tokens": 0,
+              "output_tokens": 0
+            },
+            "inner_sandbox_mode": "copy",
+            "retry_model_used": false,
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "codex_tools_stripped": true,
+            "codex_prompt_compacted": true,
+            "ollama_num_ctx": null,
+            "ollama_num_predict": null,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 33856,
+              "bytes_forwarded": 3757,
+              "bytes_out": 1236984
+            },
+            "model_pull_detected": false,
+            "reported_patch_check_error": "git apply --check failed: error: No valid patches in input (allow with \"--allow-empty\")",
+            "result_source": "reported_patch"
+          }
+        },
+        {
+          "attempt": 2,
+          "status": "VERIFIED",
+          "verification": [
+            {
+              "command": "pytest -q",
+              "exit_code": 0,
+              "stdout": ".                                                                        [100%]\n1 passed in 0.02s\n",
+              "stderr": "",
+              "duration_seconds": 1.5987290999910329,
+              "timed_out": false,
+              "passed": true
+            }
+          ],
+          "files_changed": [
+            "settings.py"
+          ],
+          "patch_bytes": 165,
+          "local_runtime": {
+            "model": "qwen3:4b",
+            "ollama_host": "http://127.0.0.1:11435",
+            "model_pull_allowed": false,
+            "output_schema_enabled": false,
+            "ollama_model_present": true,
+            "ollama_installed_models": [
+              "deepseek-r1:8b",
+              "gemma3n:e4b",
+              "ltx-2.3-q2k:latest",
+              "qwen3-coder:30b",
+              "qwen3-vl:4b",
+              "qwen3:4b",
+              "qwen3:8b"
+            ],
+            "codex_version": "codex-cli 0.87.0",
+            "provider": "codex-cli",
+            "local_provider": "ollama-chat",
+            "codex_exit_code": 0,
+            "codex_wall_clock_seconds": 88.34248959997785,
+            "wall_clock_seconds": 88.34248989998014,
+            "stdout_bytes": 447,
+            "stderr_bytes": 0,
+            "final_message_chars": 147,
+            "usage": {
+              "input_tokens": 0,
+              "cached_input_tokens": 0,
+              "output_tokens": 0
+            },
+            "inner_sandbox_mode": "copy",
+            "retry_model_used": false,
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "codex_tools_stripped": true,
+            "codex_prompt_compacted": true,
+            "ollama_num_ctx": null,
+            "ollama_num_predict": null,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 36985,
+              "bytes_forwarded": 6886,
+              "bytes_out": 1337923
+            },
+            "model_pull_detected": false,
+            "result_source": "reported_files"
+          }
+        }
+      ],
+      "context_chars": 178,
+      "local_runtime": {
+        "prompt_eval_count": 0,
+        "eval_count": 0,
+        "total_duration": 0,
+        "load_duration": 0,
+        "prompt_eval_duration": 0,
+        "eval_duration": 0,
+        "codex_wall_clock_seconds": 169.6872311999905,
+        "stdout_bytes": 981,
+        "stderr_bytes": 0,
+        "model": "qwen3:4b",
+        "attempts": 2,
+        "wall_clock_seconds": 174.21033329999773,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "telemetry_source": "provider-reported-zero",
+        "providers": [
+          "codex-cli"
+        ],
+        "result_sources": [
+          "reported_files",
+          "reported_patch"
+        ],
+        "codex_version": "codex-cli 0.87.0",
+        "model_pull_detected": false
+      },
+      "verification": [
+        {
+          "command": "pytest -q",
+          "exit_code": 0,
+          "stdout": ".                                                                        [100%]\n1 passed in 0.02s\n",
+          "stderr": "",
+          "duration_seconds": 1.5987290999910329,
+          "timed_out": false,
+          "passed": true
+        }
+      ],
+      "patch": "diff --git a/settings.py b/settings.py\nindex 40eaf72..db2b6c0 100644\n--- a/settings.py\n+++ b/settings.py\n@@ -1,2 +1 @@\n-DEFAULT_TIMEOUT = 10\n-\n+DEFAULT_TIMEOUT = 20\n"
+    }
+  ]
+}

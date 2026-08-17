@@ -1,0 +1,12 @@
+diff --git a/processor.py b/processor.py
+--- a/processor.py
++++ b/processor.py
+@@ -1,2 +1,7 @@
++import logging
++
++logger = logging.getLogger(__name__)
++
+ def process(item: str) -> str:
++    logger.info("processing item")
+     return item.strip()
+

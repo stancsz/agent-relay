@@ -1,0 +1,9 @@
+diff --git a/config.py b/config.py
+--- a/config.py
++++ b/config.py
+@@ -1,2 +1,4 @@
+ def parse_timeout(value: int) -> int:
++    if value < 0:
++        raise ValueError("timeout must not be negative")
+     return int(value)
+

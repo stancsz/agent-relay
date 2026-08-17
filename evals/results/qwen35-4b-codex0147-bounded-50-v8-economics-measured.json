@@ -1,0 +1,2790 @@
+{
+  "source": "codex-telemetry",
+  "cohort": {
+    "suite": "bounded-50",
+    "fixture_digest": "1fba5990bd9bd810f1df1c009bfbfdf17c98164ecfaa987f101d321a71be5fc3",
+    "repository_identity": "working-tree:2a506d62a54e02bedc48ffc3cbbe9183295814f16afe227ec06f275308d83aed",
+    "model": "qwen3.5:4b",
+    "backend": "codex-ollama",
+    "cohort_key": "28707b36847915de37b1adb7a9b4757c61e881c0bee81c83d72cb1b4b918d128"
+  },
+  "provenance": {
+    "run_id": "lcd-frontier-supervisor-bounded-50-codex0147-20260817",
+    "usage_artifact": "C:\\Users\\stanc\\AppData\\Local\\Temp\\lcd-frontier-supervisor-bounded-50-codex0147-20260817\\supervisor.json",
+    "repair_usage_artifact": "C:\\Users\\stanc\\AppData\\Local\\Temp\\lcd-frontier-supervisor-bounded-50-codex0147-20260817\\repair-exact-logging.json",
+    "baseline_usage_artifact": "C:\\Users\\stanc\\AppData\\Local\\Temp\\lcd-codex-baseline-bounded-50-codex0147-v2-20260817\\run.json",
+    "delegated_full_records": "C:\\Users\\stanc\\AppData\\Local\\Temp\\lcd-qwen35-bounded-50-codex0147-rewrite-v8-20260817\\artifacts\\full-records.json",
+    "captured_at_utc": "2026-08-17T15:15:03.075207+00:00"
+  },
+  "frontier_supervisor": {
+    "model": "gpt-5.6-luna",
+    "codex_executable": "C:\\Users\\stanc\\AppData\\Local\\OpenAI\\Codex\\bin\\68de26ad08be95cd\\codex.exe",
+    "codex_version": "codex-cli 0.147.0-alpha.1.2",
+    "triage_call": {
+      "decisions": 50,
+      "delegated": 45,
+      "wall_clock_seconds": 26.971174200007226,
+      "usage": {
+        "input_tokens": 23971,
+        "cached_input_tokens": 0,
+        "output_tokens": 1187,
+        "reasoning_output_tokens": 69,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 25158
+      }
+    },
+    "review_call": {
+      "decisions": 45,
+      "accepted_before_repair": 44,
+      "wall_clock_seconds": 33.89045659999829,
+      "usage": {
+        "input_tokens": 33217,
+        "cached_input_tokens": 0,
+        "output_tokens": 1594,
+        "reasoning_output_tokens": 184,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 34811
+      }
+    },
+    "repair_call": {
+      "task_id": "exact-logging",
+      "changed_files": [
+        "processor.py"
+      ],
+      "verification_passed": true,
+      "wall_clock_seconds": 23.89081779998378,
+      "usage": {
+        "input_tokens": 71542,
+        "cached_input_tokens": 51456,
+        "output_tokens": 524,
+        "reasoning_output_tokens": 88,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72066
+      }
+    }
+  },
+  "accounting_policy": {
+    "baseline": "actual per-task direct Codex CLI turn.completed telemetry",
+    "triage": "actual one-call Codex CLI triage over all 50 task contracts; its full cost is conservatively allocated across the 45 eligible tasks",
+    "delegation": "zero separately priced frontier tokens because the triage call directly owned the task contracts; local Qwen generation is not Codex usage",
+    "review": "actual one-call Codex CLI batch review over all 45 eligible candidates, allocated by evidence-packet size",
+    "repair": "actual one-call Codex CLI repair for exact-logging after review rejection",
+    "local_model_tokens": "recorded separately and excluded from Codex savings",
+    "blocked_tasks": "their triage cost is conservatively included in the eligible-task triage allocation",
+    "delegation_seconds": "zero: the runner already includes each delegated record duration; local runtime seconds remain recorded separately"
+  },
+  "review": {
+    "eligible_tasks": 45,
+    "scope_reviewed_tasks": 45,
+    "scope_violations": 0,
+    "frontier_repair_tasks": 1,
+    "review_acceptances_before_repair": 44,
+    "review_acceptances_after_repair": 45,
+    "method": "deterministic sandbox/verification evidence plus one real frontier Codex batch review; repair evidence is retained separately"
+  },
+  "tasks": {
+    "negative-timeout": {
+      "baseline_codex_tokens": 72566.0,
+      "triage_codex_tokens": 529.2032126466089,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 674.724672986284,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5673436694290148,
+      "baseline_seconds": 20.88888699997915,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.6568822282264138,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "negative-timeout",
+        "decision": "delegate",
+        "reason": "Explicit validation change with narrow scope and pytest verification."
+      },
+      "frontier_review_decision": {
+        "id": "negative-timeout",
+        "decision": "accept",
+        "reason": "The scoped patch rejects negatives, preserves zero and positive values, and pytest passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SCOPE_VIOLATION",
+      "baseline_bounded_acceptance": false,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": true,
+      "baseline_codex_usage": {
+        "input_tokens": 72140,
+        "cached_input_tokens": 60416,
+        "output_tokens": 426,
+        "reasoning_output_tokens": 56,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72566
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5552.0,
+        "output_tokens": 71.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 12.220508400001563,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 72140,
+        "cached_input_tokens": 60416,
+        "output_tokens": 426,
+        "reasoning_output_tokens": 56,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72566
+      }
+    },
+    "divide-by-zero": {
+      "baseline_codex_tokens": 72178.0,
+      "triage_codex_tokens": 442.6063233044365,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 624.3353986831189,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.47450561443153966,
+      "baseline_seconds": 20.985780799994245,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.6078254497978475,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "divide-by-zero",
+        "decision": "delegate",
+        "reason": "Small deterministic error-handling fix with focused tests."
+      },
+      "frontier_review_decision": {
+        "id": "divide-by-zero",
+        "decision": "accept",
+        "reason": "The scoped patch explicitly raises ValueError for zero and preserves nonzero division, with tests passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SCOPE_VIOLATION",
+      "baseline_bounded_acceptance": false,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": true,
+      "baseline_codex_usage": {
+        "input_tokens": 71841,
+        "cached_input_tokens": 34304,
+        "output_tokens": 337,
+        "reasoning_output_tokens": 40,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72178
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5537.0,
+        "output_tokens": 64.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.149136599997291,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 71841,
+        "cached_input_tokens": 34304,
+        "output_tokens": 337,
+        "reasoning_output_tokens": 40,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72178
+      }
+    },
+    "config-default": {
+      "baseline_codex_tokens": 53868.0,
+      "triage_codex_tokens": 413.74069352371237,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 595.453741460573,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.44355959609904794,
+      "baseline_seconds": 15.826464999991003,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.5797075402107423,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "config-default",
+        "decision": "delegate",
+        "reason": "Localized default-value change with clear acceptance criteria."
+      },
+      "frontier_review_decision": {
+        "id": "config-default",
+        "decision": "accept",
+        "reason": "The scoped patch supplies default 30 and preserves explicit values, with tests passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SCOPE_VIOLATION",
+      "baseline_bounded_acceptance": false,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": true,
+      "baseline_codex_usage": {
+        "input_tokens": 53601,
+        "cached_input_tokens": 34304,
+        "output_tokens": 267,
+        "reasoning_output_tokens": 41,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 53868
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5530.0,
+        "output_tokens": 72.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.623758700006874,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 53601,
+        "cached_input_tokens": 34304,
+        "output_tokens": 267,
+        "reasoning_output_tokens": 41,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 53868
+      }
+    },
+    "add-tests": {
+      "baseline_codex_tokens": 73104.0,
+      "triage_codex_tokens": 929.0456399796022,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 1039.7396600116506,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.9960033307753816,
+      "baseline_seconds": 23.70264489998226,
+      "delegation_seconds": 0.0,
+      "review_seconds": 1.0122447451357852,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "add-tests",
+        "decision": "delegate",
+        "reason": "Focused test-only addition with exact constraints and verification."
+      },
+      "frontier_review_decision": {
+        "id": "add-tests",
+        "decision": "accept",
+        "reason": "The patch appends the required tests without changing production code or existing tests, and pytest passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 72560,
+        "cached_input_tokens": 51456,
+        "output_tokens": 544,
+        "reasoning_output_tokens": 98,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 73104
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5676.0,
+        "output_tokens": 69.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.14966959998128,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 72560,
+        "cached_input_tokens": 51456,
+        "output_tokens": 544,
+        "reasoning_output_tokens": 98,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 73104
+      }
+    },
+    "exact-logging": {
+      "baseline_codex_tokens": 72346.0,
+      "triage_codex_tokens": 640.389342172361,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 753.3811011668344,
+      "repair_codex_tokens": 72066.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6865431474504644,
+      "baseline_seconds": 19.289499300008174,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7334586628466151,
+      "repair_seconds": 23.89081779998378,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": true,
+      "triage_decision": {
+        "id": "exact-logging",
+        "decision": "delegate",
+        "reason": "Explicit logging addition with deterministic behavior and tests."
+      },
+      "frontier_review_decision": {
+        "id": "exact-logging",
+        "decision": "reject",
+        "reason": "The logger is created inside process instead of being defined at module top as required."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SCOPE_VIOLATION",
+      "baseline_bounded_acceptance": false,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": true,
+      "baseline_codex_usage": {
+        "input_tokens": 71963,
+        "cached_input_tokens": 51456,
+        "output_tokens": 383,
+        "reasoning_output_tokens": 57,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72346
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5564.0,
+        "output_tokens": 62.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.590409399999771,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 71963,
+        "cached_input_tokens": 51456,
+        "output_tokens": 383,
+        "reasoning_output_tokens": 57,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72346
+      }
+    },
+    "empty-name": {
+      "baseline_codex_tokens": 72950.0,
+      "triage_codex_tokens": 429.77715451300355,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 605.2857949831418,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.4607518285059878,
+      "baseline_seconds": 21.685213000018848,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.5892795945382675,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "empty-name",
+        "decision": "delegate",
+        "reason": "Small validation fix with clear valid and invalid cases."
+      },
+      "frontier_review_decision": {
+        "id": "empty-name",
+        "decision": "accept",
+        "reason": "The scoped patch rejects empty lists and preserves the first element for valid input, with tests passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SCOPE_VIOLATION",
+      "baseline_bounded_acceptance": false,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": true,
+      "baseline_codex_usage": {
+        "input_tokens": 72568,
+        "cached_input_tokens": 51456,
+        "output_tokens": 382,
+        "reasoning_output_tokens": 69,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72950
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5530.0,
+        "output_tokens": 66.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.741114700009348,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 72568,
+        "cached_input_tokens": 51456,
+        "output_tokens": 382,
+        "reasoning_output_tokens": 69,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72950
+      }
+    },
+    "serializer-field": {
+      "baseline_codex_tokens": 73014.0,
+      "triage_codex_tokens": 570.898011218766,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 846.1711062860775,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6120434736870585,
+      "baseline_seconds": 19.99107250000816,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8237949255626338,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "serializer-field",
+        "decision": "delegate",
+        "reason": "Mechanical field propagation across two specified serializers."
+      },
+      "frontier_review_decision": {
+        "id": "serializer-field",
+        "decision": "accept",
+        "reason": "Both serializers include active while preserving name, and pytest passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SCOPE_VIOLATION",
+      "baseline_bounded_acceptance": false,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": true,
+      "baseline_codex_usage": {
+        "input_tokens": 72592,
+        "cached_input_tokens": 51456,
+        "output_tokens": 422,
+        "reasoning_output_tokens": 37,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 73014
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5668.0,
+        "output_tokens": 91.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.060392999992473,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 72592,
+        "cached_input_tokens": 51456,
+        "output_tokens": 422,
+        "reasoning_output_tokens": 37,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 73014
+      }
+    },
+    "deprecated-call": {
+      "baseline_codex_tokens": 72208.0,
+      "triage_codex_tokens": 435.12264150943395,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 621.2628819573162,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.4664825726416344,
+      "baseline_seconds": 18.57172909998917,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.6048341828204958,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "deprecated-call",
+        "decision": "delegate",
+        "reason": "Explicit one-call migration with minimal deterministic change."
+      },
+      "frontier_review_decision": {
+        "id": "deprecated-call",
+        "decision": "accept",
+        "reason": "The smallest scoped call-site change uses add without duplicating logic, and pytest passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SCOPE_VIOLATION",
+      "baseline_bounded_acceptance": false,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": true,
+      "baseline_codex_usage": {
+        "input_tokens": 71884,
+        "cached_input_tokens": 68608,
+        "output_tokens": 324,
+        "reasoning_output_tokens": 39,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72208
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5533.0,
+        "output_tokens": 145.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.632348600018304,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 71884,
+        "cached_input_tokens": 68608,
+        "output_tokens": 324,
+        "reasoning_output_tokens": 39,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 72208
+      }
+    },
+    "scope-discipline": {
+      "baseline_codex_tokens": 71737.0,
+      "triage_codex_tokens": 426.5698623151453,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 561.0415541315822,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.4573133820245998,
+      "baseline_seconds": 18.434593599988148,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.5462053500644043,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "scope-discipline",
+        "decision": "delegate",
+        "reason": "Single-file default change with precise scope."
+      },
+      "frontier_review_decision": {
+        "id": "scope-discipline",
+        "decision": "accept",
+        "reason": "Only the requested constant changed and the verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SCOPE_VIOLATION",
+      "baseline_bounded_acceptance": false,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": true,
+      "baseline_codex_usage": {
+        "input_tokens": 71397,
+        "cached_input_tokens": 51456,
+        "output_tokens": 340,
+        "reasoning_output_tokens": 61,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 71737
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5492.0,
+        "output_tokens": 57.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.625424500001827,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 71397,
+        "cached_input_tokens": 51456,
+        "output_tokens": 340,
+        "reasoning_output_tokens": 61,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 71737
+      }
+    },
+    "type-fix": {
+      "baseline_codex_tokens": 53877.0,
+      "triage_codex_tokens": 471.47195308516064,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 640.3124856572931,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5054516327640314,
+      "baseline_seconds": 16.587646900006803,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.6233800380800758,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "type-fix",
+        "decision": "delegate",
+        "reason": "Small deterministic return-type correction."
+      },
+      "frontier_review_decision": {
+        "id": "type-fix",
+        "decision": "accept",
+        "reason": "The patch returns the integer product with a truthful annotation, and pytest passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 53621,
+        "cached_input_tokens": 34304,
+        "output_tokens": 256,
+        "reasoning_output_tokens": 30,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 53877
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5536.0,
+        "output_tokens": 87.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.5986494999961,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 53621,
+        "cached_input_tokens": 34304,
+        "output_tokens": 256,
+        "reasoning_output_tokens": 30,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 53877
+      }
+    },
+    "benchmark-require-nonempty": {
+      "baseline_codex_tokens": 162409.0,
+      "triage_codex_tokens": 554.8615502294748,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 733.7169941216968,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5948512412801186,
+      "baseline_seconds": 47.86442170001101,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7143145541915649,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-require-nonempty",
+        "decision": "delegate",
+        "reason": "Focused local validation change with targeted pytest verification."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-require-nonempty",
+        "decision": "accept",
+        "reason": "The patch rejects empty strings and preserves nonempty values, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 161031,
+        "cached_input_tokens": 145408,
+        "output_tokens": 1378,
+        "reasoning_output_tokens": 472,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 162409
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6332.0,
+        "output_tokens": 91.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.167517800000496,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 161031,
+        "cached_input_tokens": 145408,
+        "output_tokens": 1378,
+        "reasoning_output_tokens": 472,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 162409
+      }
+    },
+    "benchmark-parse-port": {
+      "baseline_codex_tokens": 98296.0,
+      "triage_codex_tokens": 600.8327383987761,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 879.3542869247472,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6441356408466795,
+      "baseline_seconds": 36.87487569998484,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8561006089180312,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-parse-port",
+        "decision": "delegate",
+        "reason": "Explicit range validation with deterministic tests."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-parse-port",
+        "decision": "accept",
+        "reason": "The patch enforces ports 1 through 65535 while retaining integer parsing behavior, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 97054,
+        "cached_input_tokens": 91904,
+        "output_tokens": 1242,
+        "reasoning_output_tokens": 403,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 98296
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6357.0,
+        "output_tokens": 1003.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 22.070043999992777,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 97054,
+        "cached_input_tokens": 91904,
+        "output_tokens": 1242,
+        "reasoning_output_tokens": 403,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 98296
+      }
+    },
+    "benchmark-clamp-percent": {
+      "baseline_codex_tokens": 155376.0,
+      "triage_codex_tokens": 535.6177970423254,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 739.8620275733023,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5742205623917908,
+      "baseline_seconds": 41.46301279999898,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.720297088146268,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-clamp-percent",
+        "decision": "delegate",
+        "reason": "Explicit boundary validation with targeted tests."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-clamp-percent",
+        "decision": "accept",
+        "reason": "The patch rejects values outside 0 through 100 and preserves valid values, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 154175,
+        "cached_input_tokens": 129280,
+        "output_tokens": 1201,
+        "reasoning_output_tokens": 327,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 155376
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6341.0,
+        "output_tokens": 159.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 9.081647899991367,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 154175,
+        "cached_input_tokens": 129280,
+        "output_tokens": 1201,
+        "reasoning_output_tokens": 327,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 155376
+      }
+    },
+    "benchmark-require-positive": {
+      "baseline_codex_tokens": 140931.0,
+      "triage_codex_tokens": 561.2761346251913,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 748.46507440555,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6017281342428945,
+      "baseline_seconds": 38.00658710001153,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7286726356828526,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-require-positive",
+        "decision": "delegate",
+        "reason": "Simple deterministic integer validation change."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-require-positive",
+        "decision": "accept",
+        "reason": "The patch rejects nonpositive integers and preserves positive values, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 139659,
+        "cached_input_tokens": 115200,
+        "output_tokens": 1272,
+        "reasoning_output_tokens": 399,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 140931
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6328.0,
+        "output_tokens": 87.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.224912200006656,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 139659,
+        "cached_input_tokens": 115200,
+        "output_tokens": 1272,
+        "reasoning_output_tokens": 399,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 140931
+      }
+    },
+    "benchmark-parse-bool": {
+      "baseline_codex_tokens": 157600.0,
+      "triage_codex_tokens": 593.3490566037735,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 795.7818319829123,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6361125990567742,
+      "baseline_seconds": 42.334002699994016,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7747381471340674,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-parse-bool",
+        "decision": "delegate",
+        "reason": "Explicit case-insensitive parsing behavior with focused tests."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-parse-bool",
+        "decision": "accept",
+        "reason": "The patch handles true and false case-insensitively and rejects unknown values, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 156320,
+        "cached_input_tokens": 132352,
+        "output_tokens": 1280,
+        "reasoning_output_tokens": 356,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 157600
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6413.0,
+        "output_tokens": 144.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 9.616956600017147,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 156320,
+        "cached_input_tokens": 132352,
+        "output_tokens": 1280,
+        "reasoning_output_tokens": 356,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 157600
+      }
+    },
+    "benchmark-nonnegative-count": {
+      "baseline_codex_tokens": 116262.0,
+      "triage_codex_tokens": 487.5084140744518,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 707.9078536249536,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5226438651709713,
+      "baseline_seconds": 33.52547349999077,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.6891879115818113,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-nonnegative-count",
+        "decision": "delegate",
+        "reason": "Small deterministic validation fix."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-nonnegative-count",
+        "decision": "accept",
+        "reason": "The patch rejects negative counts and preserves nonnegative values, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 115240,
+        "cached_input_tokens": 91904,
+        "output_tokens": 1022,
+        "reasoning_output_tokens": 332,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 116262
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6319.0,
+        "output_tokens": 87.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.999604400014505,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 115240,
+        "cached_input_tokens": 91904,
+        "output_tokens": 1022,
+        "reasoning_output_tokens": 332,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 116262
+      }
+    },
+    "benchmark-safe-slice": {
+      "baseline_codex_tokens": 75836.0,
+      "triage_codex_tokens": 617.9382967873534,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 806.8428921958022,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6624740220807487,
+      "baseline_seconds": 21.761263799999142,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7855067082525332,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-safe-slice",
+        "decision": "delegate",
+        "reason": "Explicit bounds validation preserving valid slicing semantics."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-safe-slice",
+        "decision": "accept",
+        "reason": "The patch rejects invalid bounds while retaining valid slicing semantics, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 75333,
+        "cached_input_tokens": 63488,
+        "output_tokens": 503,
+        "reasoning_output_tokens": 54,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 75836
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6349.0,
+        "output_tokens": 115.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 8.428999700001441,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 75333,
+        "cached_input_tokens": 63488,
+        "output_tokens": 503,
+        "reasoning_output_tokens": 54,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 75836
+      }
+    },
+    "benchmark-test-normalize-email": {
+      "baseline_codex_tokens": 74221.0,
+      "triage_codex_tokens": 732.3317185109638,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 922.3695210859856,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.7851119465835862,
+      "baseline_seconds": 21.28291320000426,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8979783466009538,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-test-normalize-email",
+        "decision": "delegate",
+        "reason": "Exact one-test append with deterministic verification."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-test-normalize-email",
+        "decision": "accept",
+        "reason": "The patch adds exactly the required focused test in the allowed file, and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 73778,
+        "cached_input_tokens": 53504,
+        "output_tokens": 443,
+        "reasoning_output_tokens": 106,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 74221
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5900.0,
+        "output_tokens": 42.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.871945899998536,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 73778,
+        "cached_input_tokens": 53504,
+        "output_tokens": 443,
+        "reasoning_output_tokens": 106,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 74221
+      }
+    },
+    "benchmark-test-slugify": {
+      "baseline_codex_tokens": 154872.0,
+      "triage_codex_tokens": 673.5313615502295,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 883.655810340871,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.7220737610914735,
+      "baseline_seconds": 40.5442096000188,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8602883826863235,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-test-slugify",
+        "decision": "delegate",
+        "reason": "Exact one-test append with narrow scope."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-test-slugify",
+        "decision": "accept",
+        "reason": "The patch adds exactly the required focused test in the allowed file, and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 153509,
+        "cached_input_tokens": 137216,
+        "output_tokens": 1363,
+        "reasoning_output_tokens": 320,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 154872
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5901.0,
+        "output_tokens": 51.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.234418699983507,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 153509,
+        "cached_input_tokens": 137216,
+        "output_tokens": 1363,
+        "reasoning_output_tokens": 320,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 154872
+      }
+    },
+    "benchmark-test-redact-secret": {
+      "baseline_codex_tokens": 134175.0,
+      "triage_codex_tokens": 682.0841407445181,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 884.2703136860315,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.7312429517085081,
+      "baseline_seconds": 37.32547159999376,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8608866360817938,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-test-redact-secret",
+        "decision": "delegate",
+        "reason": "Focused boundary test with explicit expected output."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-test-redact-secret",
+        "decision": "accept",
+        "reason": "The patch adds exactly the required boundary test in the allowed file, and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 132926,
+        "cached_input_tokens": 110080,
+        "output_tokens": 1249,
+        "reasoning_output_tokens": 360,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 134175
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5909.0,
+        "output_tokens": 57.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.629507700010436,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 132926,
+        "cached_input_tokens": 110080,
+        "output_tokens": 1249,
+        "reasoning_output_tokens": 360,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 134175
+      }
+    },
+    "benchmark-test-is-blank": {
+      "baseline_codex_tokens": 134138.0,
+      "triage_codex_tokens": 633.9747577766445,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 855.3886564634856,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6796662544876885,
+      "baseline_seconds": 40.89142980001634,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8327687264946887,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-test-is-blank",
+        "decision": "delegate",
+        "reason": "Focused test-only change with exact assertion."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-test-is-blank",
+        "decision": "accept",
+        "reason": "The patch adds the required named test in the allowed file, and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 132888,
+        "cached_input_tokens": 124160,
+        "output_tokens": 1250,
+        "reasoning_output_tokens": 359,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 134138
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5897.0,
+        "output_tokens": 47.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.595959700003732,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 132888,
+        "cached_input_tokens": 124160,
+        "output_tokens": 1250,
+        "reasoning_output_tokens": 359,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 134138
+      }
+    },
+    "benchmark-test-parse-csv": {
+      "baseline_codex_tokens": 113411.0,
+      "triage_codex_tokens": 632.9056603773585,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 852.3161397376829,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6785201056605592,
+      "baseline_seconds": 36.1138162999996,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8297774595173371,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-test-parse-csv",
+        "decision": "delegate",
+        "reason": "Focused test-only addition with deterministic expected result."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-test-parse-csv",
+        "decision": "accept",
+        "reason": "The patch adds exactly the required focused test in the allowed file, and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SCOPE_VIOLATION",
+      "baseline_bounded_acceptance": false,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": true,
+      "baseline_codex_usage": {
+        "input_tokens": 112306,
+        "cached_input_tokens": 89856,
+        "output_tokens": 1105,
+        "reasoning_output_tokens": 510,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 113411
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5895.0,
+        "output_tokens": 49.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.6440990999981295,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 112306,
+        "cached_input_tokens": 89856,
+        "output_tokens": 1105,
+        "reasoning_output_tokens": 510,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 113411
+      }
+    },
+    "benchmark-test-format-bytes": {
+      "baseline_codex_tokens": 94636.0,
+      "triage_codex_tokens": 613.661907190209,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 844.9420995957563,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6578894267722314,
+      "baseline_seconds": 28.343855500017526,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8225984187716932,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-test-format-bytes",
+        "decision": "delegate",
+        "reason": "Focused boundary test with exact expected result."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-test-format-bytes",
+        "decision": "accept",
+        "reason": "The patch adds exactly the required zero-boundary test in the allowed file, and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 93938,
+        "cached_input_tokens": 71680,
+        "output_tokens": 698,
+        "reasoning_output_tokens": 141,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 94636
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5891.0,
+        "output_tokens": 44.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.145321699994383,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 93938,
+        "cached_input_tokens": 71680,
+        "output_tokens": 698,
+        "reasoning_output_tokens": 141,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 94636
+      }
+    },
+    "benchmark-test-dedupe": {
+      "baseline_codex_tokens": 74604.0,
+      "triage_codex_tokens": 598.6945436002039,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 807.4573955409628,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6418433431924209,
+      "baseline_seconds": 24.637064599985024,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7861049616480035,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-test-dedupe",
+        "decision": "delegate",
+        "reason": "Focused empty-input test with narrow scope."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-test-dedupe",
+        "decision": "accept",
+        "reason": "The patch adds exactly the required empty-input test in the allowed file, and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 74055,
+        "cached_input_tokens": 53504,
+        "output_tokens": 549,
+        "reasoning_output_tokens": 118,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 74604
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5895.0,
+        "output_tokens": 40.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.129468799976166,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 74055,
+        "cached_input_tokens": 53504,
+        "output_tokens": 549,
+        "reasoning_output_tokens": 118,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 74604
+      }
+    },
+    "benchmark-test-safe-get": {
+      "baseline_codex_tokens": 74563.0,
+      "triage_codex_tokens": 625.4219785823559,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 854.1596497731646,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6704970638706539,
+      "baseline_seconds": 23.846535100019537,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.831572219703748,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-test-safe-get",
+        "decision": "delegate",
+        "reason": "Focused present-key test with exact assertion."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-test-safe-get",
+        "decision": "accept",
+        "reason": "The patch adds exactly the required present-key test in the allowed file, and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 74019,
+        "cached_input_tokens": 53504,
+        "output_tokens": 544,
+        "reasoning_output_tokens": 93,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 74563
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5896.0,
+        "output_tokens": 50.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.074079200014239,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 74019,
+        "cached_input_tokens": 53504,
+        "output_tokens": 544,
+        "reasoning_output_tokens": 93,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 74563
+      }
+    },
+    "benchmark-test-make-tag": {
+      "baseline_codex_tokens": 117273.0,
+      "triage_codex_tokens": 600.8327383987761,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 788.4077918409857,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6441356408466795,
+      "baseline_seconds": 46.69902969998657,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7675591063884235,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-test-make-tag",
+        "decision": "delegate",
+        "reason": "Focused empty-input test with deterministic output."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-test-make-tag",
+        "decision": "accept",
+        "reason": "The patch adds exactly the required empty-name test in the allowed file, and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 115596,
+        "cached_input_tokens": 91904,
+        "output_tokens": 1677,
+        "reasoning_output_tokens": 379,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 117273
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 5889.0,
+        "output_tokens": 45.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.108998899988364,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 115596,
+        "cached_input_tokens": 91904,
+        "output_tokens": 1677,
+        "reasoning_output_tokens": 379,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 117273
+      }
+    },
+    "benchmark-add-active": {
+      "baseline_codex_tokens": 75678.0,
+      "triage_codex_tokens": 463.9882712901581,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 743.5490476442656,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.4974285909741261,
+      "baseline_seconds": 24.294508500024676,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.72388660851909,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-add-active",
+        "decision": "delegate",
+        "reason": "Mechanical field-copy change with targeted verification."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-add-active",
+        "decision": "accept",
+        "reason": "The scoped patch preserves name and copies active, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 75179,
+        "cached_input_tokens": 71680,
+        "output_tokens": 499,
+        "reasoning_output_tokens": 99,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 75678
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6317.0,
+        "output_tokens": 98.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.729251000011573,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 75179,
+        "cached_input_tokens": 71680,
+        "output_tokens": 499,
+        "reasoning_output_tokens": 99,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 75678
+      }
+    },
+    "benchmark-copy-metadata": {
+      "baseline_codex_tokens": 179072.0,
+      "triage_codex_tokens": 556.999745028047,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 854.1596497731646,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5971435389343772,
+      "baseline_seconds": 43.392906199995195,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.831572219703748,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-copy-metadata",
+        "decision": "delegate",
+        "reason": "Explicit shallow-copy behavior with clear tests."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-copy-metadata",
+        "decision": "accept",
+        "reason": "The patch preserves existing fields and copies tags without mutating input, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 177664,
+        "cached_input_tokens": 152576,
+        "output_tokens": 1408,
+        "reasoning_output_tokens": 407,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 179072
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6405.0,
+        "output_tokens": 116.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 8.71143550000852,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 177664,
+        "cached_input_tokens": 152576,
+        "output_tokens": 1408,
+        "reasoning_output_tokens": 407,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 179072
+      }
+    },
+    "benchmark-rename-fields": {
+      "baseline_codex_tokens": 138037.0,
+      "triage_codex_tokens": 560.2070372259052,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 865.8352133312151,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6005819854157652,
+      "baseline_seconds": 43.6885868999816,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8429390342176841,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-rename-fields",
+        "decision": "delegate",
+        "reason": "Mechanical field-preservation change with focused tests."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-rename-fields",
+        "decision": "accept",
+        "reason": "The patch retains renamed fields and carries email through, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 136607,
+        "cached_input_tokens": 112128,
+        "output_tokens": 1430,
+        "reasoning_output_tokens": 525,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 138037
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6415.0,
+        "output_tokens": 308.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 12.017613800009713,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 136607,
+        "cached_input_tokens": 112128,
+        "output_tokens": 1430,
+        "reasoning_output_tokens": 525,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 138037
+      }
+    },
+    "benchmark-serialize-pair": {
+      "baseline_codex_tokens": 95662.0,
+      "triage_codex_tokens": 482.1629270780214,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 737.40401419266,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5169131210353246,
+      "baseline_seconds": 30.786559100000886,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7179040745643868,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-serialize-pair",
+        "decision": "delegate",
+        "reason": "Exact formatting change with deterministic verification."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-serialize-pair",
+        "decision": "accept",
+        "reason": "The patch produces the exact required label format without whitespace, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 94924,
+        "cached_input_tokens": 72704,
+        "output_tokens": 738,
+        "reasoning_output_tokens": 271,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 95662
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6324.0,
+        "output_tokens": 62.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.779160799982492,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 94924,
+        "cached_input_tokens": 72704,
+        "output_tokens": 738,
+        "reasoning_output_tokens": 271,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 95662
+      }
+    },
+    "benchmark-format-labels": {
+      "baseline_codex_tokens": 114918.0,
+      "triage_codex_tokens": 549.5160632330444,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 788.4077918409857,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.589120497144472,
+      "baseline_seconds": 36.392041999992216,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7675591063884235,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-format-labels",
+        "decision": "delegate",
+        "reason": "Explicit normalization and formatting transformation."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-format-labels",
+        "decision": "accept",
+        "reason": "The patch strips and lowercases labels and joins them correctly, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 113880,
+        "cached_input_tokens": 90880,
+        "output_tokens": 1038,
+        "reasoning_output_tokens": 528,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 114918
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6365.0,
+        "output_tokens": 157.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 9.354808100004448,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 113880,
+        "cached_input_tokens": 90880,
+        "output_tokens": 1038,
+        "reasoning_output_tokens": 528,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 114918
+      }
+    },
+    "benchmark-add-headers": {
+      "baseline_codex_tokens": 179165.0,
+      "triage_codex_tokens": 621.1455889852116,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 827.7360059312609,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6659124685621366,
+      "baseline_seconds": 46.47391800000332,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8058473236985242,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-add-headers",
+        "decision": "delegate",
+        "reason": "Simple deterministic list transformation with scope constraints."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-add-headers",
+        "decision": "accept",
+        "reason": "The patch prepends the required header row without flattening or mutating input, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 177649,
+        "cached_input_tokens": 151552,
+        "output_tokens": 1516,
+        "reasoning_output_tokens": 312,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 179165
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6397.0,
+        "output_tokens": 194.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 9.88360040000407,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 177649,
+        "cached_input_tokens": 151552,
+        "output_tokens": 1516,
+        "reasoning_output_tokens": 312,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 179165
+      }
+    },
+    "benchmark-select-columns": {
+      "baseline_codex_tokens": 136010.0,
+      "triage_codex_tokens": 542.0323814380419,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 797.0108386732334,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5810974553545667,
+      "baseline_seconds": 39.11174590000883,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.775934653925008,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-select-columns",
+        "decision": "delegate",
+        "reason": "Mechanical column selection with focused tests."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-select-columns",
+        "decision": "accept",
+        "reason": "The patch returns exactly id and name from the input, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 134911,
+        "cached_input_tokens": 120064,
+        "output_tokens": 1099,
+        "reasoning_output_tokens": 403,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 136010
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6386.0,
+        "output_tokens": 104.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.797789699980058,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 134911,
+        "cached_input_tokens": 120064,
+        "output_tokens": 1099,
+        "reasoning_output_tokens": 403,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 136010
+      }
+    },
+    "benchmark-copy-tags": {
+      "baseline_codex_tokens": 196493.0,
+      "triage_codex_tokens": 552.7233554309026,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 827.1215025861004,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5925589436258599,
+      "baseline_seconds": 43.77328929997748,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8052490703030538,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-copy-tags",
+        "decision": "delegate",
+        "reason": "Explicit copied-list and count transformation."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-copy-tags",
+        "decision": "accept",
+        "reason": "The patch copies tags and computes tag_count with an empty-list fallback, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 195283,
+        "cached_input_tokens": 177664,
+        "output_tokens": 1210,
+        "reasoning_output_tokens": 357,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 196493
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6390.0,
+        "output_tokens": 104.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.179234900017036,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 195283,
+        "cached_input_tokens": 177664,
+        "output_tokens": 1210,
+        "reasoning_output_tokens": 357,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 196493
+      }
+    },
+    "benchmark-scale-int": {
+      "baseline_codex_tokens": 175348.0,
+      "triage_codex_tokens": 534.5486996430393,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 764.4421613797242,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5730744135646615,
+      "baseline_seconds": 41.80328229998122,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7442272239650809,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-scale-int",
+        "decision": "delegate",
+        "reason": "Annotation-only change with deterministic scope."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-scale-int",
+        "decision": "accept",
+        "reason": "The patch makes the annotation int-only while preserving multiplication, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 174108,
+        "cached_input_tokens": 148480,
+        "output_tokens": 1240,
+        "reasoning_output_tokens": 450,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 175348
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6332.0,
+        "output_tokens": 54.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 6.186188100022264,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 174108,
+        "cached_input_tokens": 148480,
+        "output_tokens": 1240,
+        "reasoning_output_tokens": 450,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 175348
+      }
+    },
+    "benchmark-join-names": {
+      "baseline_codex_tokens": 75718.0,
+      "triage_codex_tokens": 556.999745028047,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 750.3085844410316,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5971435389343772,
+      "baseline_seconds": 20.55836029999773,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7304673958692636,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-join-names",
+        "decision": "delegate",
+        "reason": "Annotation-only precision fix with behavior preserved."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-join-names",
+        "decision": "accept",
+        "reason": "The patch makes the values annotation precise without changing behavior, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 75306,
+        "cached_input_tokens": 63488,
+        "output_tokens": 412,
+        "reasoning_output_tokens": 44,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 75718
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6384.0,
+        "output_tokens": 45.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.2246652000176255,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 75306,
+        "cached_input_tokens": 63488,
+        "output_tokens": 412,
+        "reasoning_output_tokens": 44,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 75718
+      }
+    },
+    "benchmark-append-value": {
+      "baseline_codex_tokens": 181320.0,
+      "triage_codex_tokens": 647.8730239673636,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 849.8581263570408,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.6945661892403697,
+      "baseline_seconds": 58.163028700015275,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.8273844459354558,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-append-value",
+        "decision": "delegate",
+        "reason": "Standard mutable-default correction with explicit tests."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-append-value",
+        "decision": "accept",
+        "reason": "The patch uses a fresh list for omitted input and preserves explicit-list behavior, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 179248,
+        "cached_input_tokens": 152576,
+        "output_tokens": 2072,
+        "reasoning_output_tokens": 617,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 181320
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6445.0,
+        "output_tokens": 82.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.740953100001207,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 179248,
+        "cached_input_tokens": 152576,
+        "output_tokens": 2072,
+        "reasoning_output_tokens": 617,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 181320
+      }
+    },
+    "benchmark-is-even": {
+      "baseline_codex_tokens": 115797.0,
+      "triage_codex_tokens": 484.3011218765936,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 734.9460008120178,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5192054186895833,
+      "baseline_seconds": 37.24531129997922,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7155110609825055,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-is-even",
+        "decision": "delegate",
+        "reason": "Small deterministic return-value and annotation fix."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-is-even",
+        "decision": "accept",
+        "reason": "The patch returns a boolean with the required annotation and parity behavior, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 114548,
+        "cached_input_tokens": 91904,
+        "output_tokens": 1249,
+        "reasoning_output_tokens": 658,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 115797
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6326.0,
+        "output_tokens": 154.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 9.277090599993244,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 114548,
+        "cached_input_tokens": 91904,
+        "output_tokens": 1249,
+        "reasoning_output_tokens": 658,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 115797
+      }
+    },
+    "benchmark-read-timeout": {
+      "baseline_codex_tokens": 95519.0,
+      "triage_codex_tokens": 523.8577256501785,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 741.705537608784,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5616129252933683,
+      "baseline_seconds": 27.8580762000056,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.722091848332679,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-read-timeout",
+        "decision": "delegate",
+        "reason": "Localized configuration default change with targeted tests."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-read-timeout",
+        "decision": "accept",
+        "reason": "The patch changes only the absent-key default to 30 and targeted verification passed."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 94755,
+        "cached_input_tokens": 72704,
+        "output_tokens": 764,
+        "reasoning_output_tokens": 352,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 95519
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6342.0,
+        "output_tokens": 195.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 10.052405399997951,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 94755,
+        "cached_input_tokens": 72704,
+        "output_tokens": 764,
+        "reasoning_output_tokens": 352,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 95519
+      }
+    },
+    "benchmark-build-schema": {
+      "baseline_codex_tokens": 75597.0,
+      "triage_codex_tokens": 458.6427842937277,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 712.2093770410775,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.4916978468384795,
+      "baseline_seconds": 22.55934450001223,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.6933756853501035,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-build-schema",
+        "decision": "delegate",
+        "reason": "Mechanical schema-field addition with explicit requirements."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-build-schema",
+        "decision": "accept",
+        "reason": "The patch adds active mapped to bool while preserving name, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 75157,
+        "cached_input_tokens": 54528,
+        "output_tokens": 440,
+        "reasoning_output_tokens": 56,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 75597
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6320.0,
+        "output_tokens": 195.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 9.873036500008311,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 75157,
+        "cached_input_tokens": 54528,
+        "output_tokens": 440,
+        "reasoning_output_tokens": 56,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 75597
+      }
+    },
+    "benchmark-retry-limit": {
+      "baseline_codex_tokens": 175146.0,
+      "triage_codex_tokens": 523.8577256501785,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 760.1406379636004,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5616129252933683,
+      "baseline_seconds": 38.01736070000334,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7400394501967886,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-retry-limit",
+        "decision": "delegate",
+        "reason": "Localized configuration default change with focused verification."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-retry-limit",
+        "decision": "accept",
+        "reason": "The patch changes only the absent retries default to 3, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 174053,
+        "cached_input_tokens": 157440,
+        "output_tokens": 1093,
+        "reasoning_output_tokens": 298,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 175146
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6337.0,
+        "output_tokens": 231.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 10.435954399988987,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 174053,
+        "cached_input_tokens": 157440,
+        "output_tokens": 1093,
+        "reasoning_output_tokens": 298,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 175146
+      }
+    },
+    "benchmark-serialize-user": {
+      "baseline_codex_tokens": 56162.0,
+      "triage_codex_tokens": 504.6139724630291,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 774.2742149022931,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5409822464050404,
+      "baseline_seconds": 18.383483600016916,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7537992782926061,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-serialize-user",
+        "decision": "delegate",
+        "reason": "Mechanical serializer field addition with clear scope."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-serialize-user",
+        "decision": "accept",
+        "reason": "The patch preserves name and includes email without unrelated fields, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 55878,
+        "cached_input_tokens": 45312,
+        "output_tokens": 284,
+        "reasoning_output_tokens": 27,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 56162
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6328.0,
+        "output_tokens": 92.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.713330400001723,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 55878,
+        "cached_input_tokens": 45312,
+        "output_tokens": 284,
+        "reasoning_output_tokens": 27,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 56162
+      }
+    },
+    "benchmark-last-item": {
+      "baseline_codex_tokens": 136386.0,
+      "triage_codex_tokens": 491.78480367159614,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 729.415470705573,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5272284604794886,
+      "baseline_seconds": 37.48751460001222,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7101267804232726,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-last-item",
+        "decision": "delegate",
+        "reason": "Small deterministic off-by-one correction."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-last-item",
+        "decision": "accept",
+        "reason": "The scoped patch fixes the off-by-one error for nonempty lists, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 135243,
+        "cached_input_tokens": 111104,
+        "output_tokens": 1143,
+        "reasoning_output_tokens": 339,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 136386
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6360.0,
+        "output_tokens": 69.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 7.610258100001374,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 135243,
+        "cached_input_tokens": 111104,
+        "output_tokens": 1143,
+        "reasoning_output_tokens": 339,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 136386
+      }
+    },
+    "benchmark-cached-value": {
+      "baseline_codex_tokens": 155962.0,
+      "triage_codex_tokens": 548.4469658337583,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 763.2131546894032,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5879743483173426,
+      "baseline_seconds": 39.57472909998614,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7430307171741403,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-cached-value",
+        "decision": "delegate",
+        "reason": "Localized missing-key behavior fix with focused tests."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-cached-value",
+        "decision": "accept",
+        "reason": "The patch returns present values and None for missing keys, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 154649,
+        "cached_input_tokens": 129280,
+        "output_tokens": 1313,
+        "reasoning_output_tokens": 417,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 155962
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 2,
+      "delegated_first_attempt_accepted": false,
+      "local_runtime_tokens": {
+        "input_tokens": 12957.0,
+        "output_tokens": 204.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 13.275363399996422,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 154649,
+        "cached_input_tokens": 129280,
+        "output_tokens": 1313,
+        "reasoning_output_tokens": 417,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 155962
+      }
+    },
+    "benchmark-first-or-none": {
+      "baseline_codex_tokens": 134378.0,
+      "triage_codex_tokens": 520.6504334523203,
+      "delegation_codex_tokens": 0.0,
+      "review_codex_tokens": 722.6559339088069,
+      "repair_codex_tokens": 0.0,
+      "recovery_codex_tokens": 0.0,
+      "triage_seconds": 0.5581744788119802,
+      "baseline_seconds": 32.06994729998405,
+      "delegation_seconds": 0.0,
+      "review_seconds": 0.7035459930730991,
+      "repair_seconds": 0.0,
+      "recovery_seconds": 0.0,
+      "scope_reviewed": true,
+      "scope_violation": false,
+      "substantial_codex_repair": false,
+      "triage_decision": {
+        "id": "benchmark-first-or-none",
+        "decision": "delegate",
+        "reason": "Simple empty-input edge-case fix with deterministic verification."
+      },
+      "frontier_review_decision": {
+        "id": "benchmark-first-or-none",
+        "decision": "accept",
+        "reason": "The patch returns None for empty lists and the first item otherwise, with targeted verification passing."
+      },
+      "frontier_review_final_decision": "accept",
+      "baseline_status": "SUCCESS",
+      "baseline_bounded_acceptance": true,
+      "baseline_verification_passed": true,
+      "baseline_scope_violation": false,
+      "baseline_codex_usage": {
+        "input_tokens": 133426,
+        "cached_input_tokens": 110080,
+        "output_tokens": 952,
+        "reasoning_output_tokens": 332,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 134378
+      },
+      "delegated_status": "SUCCESS",
+      "delegated_attempts": 1,
+      "delegated_first_attempt_accepted": true,
+      "local_runtime_tokens": {
+        "input_tokens": 6336.0,
+        "output_tokens": 198.0,
+        "status": "provider-telemetry"
+      },
+      "local_runtime_seconds": 9.85419909999473,
+      "review_basis": "one real batch Codex review over all eligible candidates; exact-logging received one measured Codex repair",
+      "codex_usage": {
+        "input_tokens": 133426,
+        "cached_input_tokens": 110080,
+        "output_tokens": 952,
+        "reasoning_output_tokens": 332,
+        "turns": 1,
+        "token_status": "provider-telemetry",
+        "total_tokens": 134378
+      }
+    }
+  }
+}

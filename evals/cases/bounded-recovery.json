@@ -1,0 +1,73 @@
+{
+  "name": "bounded-recovery",
+  "cases": [
+    {
+      "id": "recovery-add-tests",
+      "category": "protocol-recovery",
+      "difficulty": "medium",
+      "fixture": "add-tests",
+      "eligibility": "eligible",
+      "expected_status": "SUCCESS",
+      "expected_files": ["tests/test_normalize.py"],
+      "patch_file": "patches/add-tests.diff",
+      "task": {
+        "task_id": "eval-recovery-add-tests",
+        "objective": "Add focused tests for empty and malformed input to the existing normalize function.",
+        "allowed_files": ["tests/test_normalize.py"],
+        "context": ["normalize.py", "tests/test_normalize.py"],
+        "requirements": [
+          "Preserve the existing first lines `import pytest` and `from normalize import normalize` exactly.",
+          "Preserve the existing normal-input test exactly.",
+          "Append a test that empty input returns an empty string.",
+          "Append a malformed None-input test using pytest.raises((AttributeError, TypeError)) because normalize calls strip on the value."
+        ],
+        "constraints": [
+          "Modify only the test file by appending tests after the existing content.",
+          "Do not change normalize.py, remove imports, or rewrite existing tests."
+        ],
+        "verification": ["pytest -q"],
+        "success_criteria": ["All tests pass.", "The implementation file is unchanged."]
+      }
+    },
+    {
+      "id": "recovery-deprecated-call",
+      "category": "protocol-recovery",
+      "difficulty": "easy",
+      "fixture": "deprecated-call",
+      "eligibility": "eligible",
+      "expected_status": "SUCCESS",
+      "expected_files": ["math_utils.py"],
+      "patch_file": "patches/deprecated-call.diff",
+      "task": {
+        "task_id": "eval-recovery-deprecated-call",
+        "objective": "Replace the undefined old_add call with the existing add function.",
+        "allowed_files": ["math_utils.py"],
+        "context": ["math_utils.py", "test_math_utils.py"],
+        "requirements": ["use_add returns the sum.", "Do not duplicate the addition logic."],
+        "constraints": ["Make the smallest call-site change."],
+        "verification": ["pytest -q"],
+        "success_criteria": ["All tests pass."]
+      }
+    },
+    {
+      "id": "recovery-scope-transport",
+      "category": "protocol-recovery",
+      "difficulty": "easy",
+      "fixture": "scope-discipline",
+      "eligibility": "eligible",
+      "expected_status": "SUCCESS",
+      "expected_files": ["settings.py"],
+      "patch_file": "patches/scope-discipline.diff",
+      "task": {
+        "task_id": "eval-recovery-scope-transport",
+        "objective": "Change the default timeout from 10 to 20.",
+        "allowed_files": ["settings.py"],
+        "context": ["settings.py", "test_settings.py"],
+        "requirements": ["The default timeout is 20."],
+        "constraints": ["Do not refactor the nearby ugly code.", "Do not touch unrelated.py."],
+        "verification": ["pytest -q"],
+        "success_criteria": ["Only settings.py changes.", "All tests pass."]
+      }
+    }
+  ]
+}

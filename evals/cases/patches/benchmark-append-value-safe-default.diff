@@ -1,0 +1,10 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -110,3 +110,5 @@
+-def append_value(items: list[int] = []) -> list[int]:
++def append_value(items: list[int] | None = None) -> list[int]:
++    if items is None:
++        items = []
+     items.append(1)
+     return items

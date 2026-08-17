@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -123,3 +123,3 @@
+ def build_schema() -> dict[str, type]:
+-    return {"name": str}
++    return {"name": str, "active": bool}
+ 

@@ -1,0 +1,430 @@
+{
+  "suite": "bounded-recovery",
+  "backend": "codex-ollama",
+  "records": [
+    {
+      "id": "recovery-add-tests",
+      "task_id": "eval-recovery-add-tests",
+      "category": "protocol-recovery",
+      "difficulty": "medium",
+      "eligibility": "eligible",
+      "status": "SUCCESS",
+      "passed": true,
+      "reasons": [],
+      "files_changed": [
+        "tests/test_normalize.py"
+      ],
+      "attempts": 2,
+      "verification_passed": true,
+      "first_attempt_accepted": false,
+      "bounded_acceptance": true,
+      "scope_violation": false,
+      "scope_reviewed": null,
+      "substantial_codex_repair": null,
+      "blocked_result_correct": false,
+      "duration_seconds": 115.51559640001506,
+      "blockers": [],
+      "sandbox_mode": "copy",
+      "main_worktree_unchanged": true,
+      "attempt_history": [
+        {
+          "attempt": 1,
+          "status": "FAILED_VERIFICATION",
+          "verification": [
+            {
+              "command": "pytest -q",
+              "exit_code": 2,
+              "stdout": "\n=================================== ERRORS ====================================\n__________________ ERROR collecting tests/test_normalize.py ___________________\n..\\..\\..\\..\\Roaming\\Python\\Python314\\site-packages\\_pytest\\python.py:498: in importtestmodule\n    mod = import_path(\n..\\..\\..\\..\\Roaming\\Python\\Python314\\site-packages\\_pytest\\pathlib.py:587: in import_path\n    importlib.import_module(module_name)\nC:\\Program Files\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1398: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1371: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1342: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:938: in _load_unlocked\n    ???\n..\\..\\..\\..\\Roaming\\Python\\Python314\\site-packages\\_pytest\\assertion\\rewrite.py:177: in exec_module\n    source_stat, co = _rewrite_test(fn, self.config)\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\..\\..\\Roaming\\Python\\Python314\\site-packages\\_pytest\\assertion\\rewrite.py:357: in _rewrite_test\n    tree = ast.parse(source, filename=strfn)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nC:\\Program Files\\Python314\\Lib\\ast.py:46: in parse\n    return compile(source, filename, mode, flags,\nE     File \"C:\\Users\\stanc\\AppData\\Local\\Temp\\lcd-sandbox-zg7izuqq\\copy\\tests\\test_normalize.py\", line 1\nE       +def test_empty_input() -> None:\nE        ^^^\nE   SyntaxError: invalid syntax\n=========================== short test summary info ===========================\nERROR tests/test_normalize.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.33s\n",
+              "stderr": "",
+              "duration_seconds": 2.021691000001738,
+              "timed_out": false,
+              "passed": false
+            }
+          ],
+          "files_changed": [
+            "tests/test_normalize.py"
+          ],
+          "patch_bytes": 492,
+          "local_runtime": {
+            "model": "qwen3:4b",
+            "ollama_host": "http://127.0.0.1:11435",
+            "model_pull_allowed": false,
+            "output_schema_enabled": false,
+            "ollama_model_present": true,
+            "ollama_installed_models": [
+              "deepseek-r1:8b",
+              "gemma3n:e4b",
+              "ltx-2.3-q2k:latest",
+              "qwen3-coder:30b",
+              "qwen3-vl:4b",
+              "qwen3:4b",
+              "qwen3:8b"
+            ],
+            "codex_version": "codex-cli 0.87.0",
+            "provider": "codex-cli",
+            "local_provider": "ollama-chat",
+            "codex_exit_code": 0,
+            "codex_wall_clock_seconds": 58.48563470001682,
+            "wall_clock_seconds": 58.48563579999609,
+            "stdout_bytes": 617,
+            "stderr_bytes": 0,
+            "final_message_chars": 310,
+            "usage": {
+              "input_tokens": 0,
+              "cached_input_tokens": 0,
+              "output_tokens": 0
+            },
+            "inner_sandbox_mode": "copy",
+            "retry_model_used": false,
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 34565,
+              "bytes_out": 826067
+            },
+            "model_pull_detected": false,
+            "reported_patch_check_error": "patch did not contain recognizable file paths",
+            "result_source": "reported_patch"
+          }
+        },
+        {
+          "attempt": 2,
+          "status": "VERIFIED",
+          "verification": [
+            {
+              "command": "pytest -q",
+              "exit_code": 0,
+              "stdout": ".                                                                        [100%]\n1 passed in 0.03s\n",
+              "stderr": "",
+              "duration_seconds": 1.5357487000001129,
+              "timed_out": false,
+              "passed": true
+            }
+          ],
+          "files_changed": [
+            "tests/test_normalize.py"
+          ],
+          "patch_bytes": 1187,
+          "local_runtime": {
+            "model": "qwen3:4b",
+            "ollama_host": "http://127.0.0.1:11435",
+            "model_pull_allowed": false,
+            "output_schema_enabled": false,
+            "ollama_model_present": true,
+            "ollama_installed_models": [
+              "deepseek-r1:8b",
+              "gemma3n:e4b",
+              "ltx-2.3-q2k:latest",
+              "qwen3-coder:30b",
+              "qwen3-vl:4b",
+              "qwen3:4b",
+              "qwen3:8b"
+            ],
+            "codex_version": "codex-cli 0.87.0",
+            "provider": "codex-cli",
+            "local_provider": "ollama-chat",
+            "codex_exit_code": 0,
+            "codex_wall_clock_seconds": 51.83125270000892,
+            "wall_clock_seconds": 51.8312530000112,
+            "stdout_bytes": 1233,
+            "stderr_bytes": 0,
+            "final_message_chars": 913,
+            "usage": {
+              "input_tokens": 0,
+              "cached_input_tokens": 0,
+              "output_tokens": 0
+            },
+            "inner_sandbox_mode": "copy",
+            "retry_model_used": false,
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 38210,
+              "bytes_out": 737366
+            },
+            "model_pull_detected": false,
+            "final_message_preview": "```json\n{\n  \"response\": \"The previous patch incorrectly modified the file by removing existing content. To fix this, the two new tests should be appended after the existing test function while preserving the original lines. Here's the corrected patch:\\n\\n--- a/tests/test_normalize.py\\n+++ b/tests/test_normalize.py\\n@@ -5,5 +5,10 @@\\ndef test_normal_input() -> None:\\n    assert normalize(\\\" Hello \\\") == \\\"hello\\\"\\n+\\ndef test_empty_input() -> None:\\n+    assert normalize(\\\"\\\") == \\\"\\\"\\n+\\ndef test_malformed_input() -> None:\\n+    with pytest.raises((AttributeError, TypeError)):\\n+        normalize(None)\",\n  \"explanation\": \"The error occurred because the previous patch removed the existing test function and imports, causing a syntax error. The fix preserves the original file structure and adds the two new tests after the existing `test_normal_input` function with proper indentation and newlines.\"\n}\n```",
+            "final_result_fallback": "reported_code_block",
+            "result_source": "reported_code_block"
+          }
+        }
+      ],
+      "context_chars": 249,
+      "local_runtime": {
+        "prompt_eval_count": 0,
+        "eval_count": 0,
+        "total_duration": 0,
+        "load_duration": 0,
+        "prompt_eval_duration": 0,
+        "eval_duration": 0,
+        "codex_wall_clock_seconds": 110.31688740002573,
+        "stdout_bytes": 1850,
+        "stderr_bytes": 0,
+        "model": "qwen3:4b",
+        "attempts": 2,
+        "wall_clock_seconds": 115.48169960000087,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "telemetry_source": "provider-reported-zero",
+        "providers": [
+          "codex-cli"
+        ],
+        "result_sources": [
+          "reported_code_block",
+          "reported_patch"
+        ],
+        "codex_version": "codex-cli 0.87.0",
+        "model_pull_detected": false
+      },
+      "verification": [
+        {
+          "command": "pytest -q",
+          "exit_code": 0,
+          "stdout": ".                                                                        [100%]\n1 passed in 0.03s\n",
+          "stderr": "",
+          "duration_seconds": 1.5357487000001129,
+          "timed_out": false,
+          "passed": true
+        }
+      ],
+      "patch": "diff --git a/tests/test_normalize.py b/tests/test_normalize.py\nindex 9f47af7..f5c38a8 100644\n--- a/tests/test_normalize.py\n+++ b/tests/test_normalize.py\n@@ -6,3 +6,7 @@ from normalize import normalize\n def test_normal_input() -> None:\n     assert normalize(\" Hello \") == \"hello\"\n \n+{\n+  \"response\": \"The previous patch incorrectly modified the file by removing existing content. To fix this, the two new tests should be appended after the existing test function while preserving the original lines. Here's the corrected patch:\\n\\n--- a/tests/test_normalize.py\\n+++ b/tests/test_normalize.py\\n@@ -5,5 +5,10 @@\\ndef test_normal_input() -> None:\\n    assert normalize(\\\" Hello \\\") == \\\"hello\\\"\\n+\\ndef test_empty_input() -> None:\\n+    assert normalize(\\\"\\\") == \\\"\\\"\\n+\\ndef test_malformed_input() -> None:\\n+    with pytest.raises((AttributeError, TypeError)):\\n+        normalize(None)\",\n+  \"explanation\": \"The error occurred because the previous patch removed the existing test function and imports, causing a syntax error. The fix preserves the original file structure and adds the two new tests after the existing `test_normal_input` function with proper indentation and newlines.\"\n+}\n"
+    },
+    {
+      "id": "recovery-deprecated-call",
+      "task_id": "eval-recovery-deprecated-call",
+      "category": "protocol-recovery",
+      "difficulty": "easy",
+      "eligibility": "eligible",
+      "status": "TIMEOUT",
+      "passed": false,
+      "reasons": [
+        "expected SUCCESS, got TIMEOUT",
+        "expected files ['math_utils.py'], got []"
+      ],
+      "files_changed": [],
+      "attempts": 2,
+      "verification_passed": false,
+      "first_attempt_accepted": false,
+      "bounded_acceptance": false,
+      "scope_violation": false,
+      "scope_reviewed": null,
+      "substantial_codex_repair": null,
+      "blocked_result_correct": false,
+      "duration_seconds": 149.7705796000082,
+      "blockers": [
+        "Codex CLI made no stdout/stderr progress for 90 seconds"
+      ],
+      "sandbox_mode": null,
+      "main_worktree_unchanged": true,
+      "attempt_history": [
+        {
+          "attempt": 1,
+          "status": "WORKER_ERROR",
+          "verification": [],
+          "files_changed": [],
+          "patch_bytes": 0,
+          "failure": "Codex CLI returned a malformed structured result: final result was not valid JSON",
+          "local_runtime": {
+            "model": "qwen3:4b",
+            "ollama_host": "http://127.0.0.1:11435",
+            "model_pull_allowed": false,
+            "output_schema_enabled": false,
+            "ollama_model_present": true,
+            "ollama_installed_models": [
+              "deepseek-r1:8b",
+              "gemma3n:e4b",
+              "ltx-2.3-q2k:latest",
+              "qwen3-coder:30b",
+              "qwen3-vl:4b",
+              "qwen3:4b",
+              "qwen3:8b"
+            ],
+            "codex_version": "codex-cli 0.87.0",
+            "provider": "codex-cli",
+            "local_provider": "ollama-chat",
+            "codex_exit_code": 0,
+            "codex_wall_clock_seconds": 58.71603630000027,
+            "wall_clock_seconds": 58.71603640000103,
+            "stdout_bytes": 196,
+            "stderr_bytes": 144,
+            "final_message_chars": 0,
+            "usage": {
+              "input_tokens": 0,
+              "cached_input_tokens": 0,
+              "output_tokens": 0
+            },
+            "inner_sandbox_mode": "copy",
+            "retry_model_used": false,
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 33961,
+              "bytes_out": 836072
+            },
+            "model_pull_detected": false,
+            "stderr_tail": "Warning: no last agent message; wrote empty content to C:\\Users\\stanc\\AppData\\Local\\Temp\\lcd-sandbox-vjbtr1w9\\copy\\.lcd-codex-final-message.txt\n",
+            "final_message_preview": ""
+          }
+        },
+        {
+          "attempt": 2,
+          "status": "TIMEOUT",
+          "verification": [],
+          "files_changed": [],
+          "patch_bytes": 0,
+          "failure": "Codex CLI made no stdout/stderr progress for 90 seconds",
+          "local_runtime": {
+            "idle_timeout_seconds": 90.0,
+            "no_progress_timeout": true,
+            "failure_kind": "codex_no_progress",
+            "recovery": "Do not start a long Codex run until the capability smoke passes; warm the model or use a smaller task, a different local model, or direct Ollama.",
+            "transport_progress_bytes": 0,
+            "stdout_bytes": 101,
+            "stderr_bytes": 0,
+            "stdout_tail": "{\"type\":\"thread.started\",\"thread_id\":\"01a00e31-634d-7a40-bd89-99a4dca05525\"}\n{\"type\":\"turn.started\"}\n",
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 34517,
+              "bytes_out": 0
+            }
+          }
+        }
+      ],
+      "context_chars": 274,
+      "local_runtime": {
+        "prompt_eval_count": 0,
+        "eval_count": 0,
+        "total_duration": 0,
+        "load_duration": 0,
+        "prompt_eval_duration": 0,
+        "eval_duration": 0,
+        "codex_wall_clock_seconds": 58.71603630000027,
+        "stdout_bytes": 297,
+        "stderr_bytes": 144,
+        "model": null,
+        "attempts": 2,
+        "wall_clock_seconds": 149.74159750001854,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "telemetry_source": "provider-reported-zero",
+        "providers": [
+          "codex-cli"
+        ],
+        "result_sources": [],
+        "codex_version": null,
+        "model_pull_detected": false
+      },
+      "verification": [],
+      "patch": ""
+    },
+    {
+      "id": "recovery-scope-transport",
+      "task_id": "eval-recovery-scope-transport",
+      "category": "protocol-recovery",
+      "difficulty": "easy",
+      "eligibility": "eligible",
+      "status": "TIMEOUT",
+      "passed": false,
+      "reasons": [
+        "expected SUCCESS, got TIMEOUT",
+        "expected files ['settings.py'], got []"
+      ],
+      "files_changed": [],
+      "attempts": 1,
+      "verification_passed": false,
+      "first_attempt_accepted": false,
+      "bounded_acceptance": false,
+      "scope_violation": false,
+      "scope_reviewed": null,
+      "substantial_codex_repair": null,
+      "blocked_result_correct": false,
+      "duration_seconds": 91.10307420001482,
+      "blockers": [
+        "Codex CLI made no stdout/stderr progress for 90 seconds"
+      ],
+      "sandbox_mode": null,
+      "main_worktree_unchanged": true,
+      "attempt_history": [
+        {
+          "attempt": 1,
+          "status": "TIMEOUT",
+          "verification": [],
+          "files_changed": [],
+          "patch_bytes": 0,
+          "failure": "Codex CLI made no stdout/stderr progress for 90 seconds",
+          "local_runtime": {
+            "idle_timeout_seconds": 90.0,
+            "no_progress_timeout": true,
+            "failure_kind": "codex_no_progress",
+            "recovery": "Do not start a long Codex run until the capability smoke passes; warm the model or use a smaller task, a different local model, or direct Ollama.",
+            "transport_progress_bytes": 0,
+            "stdout_bytes": 101,
+            "stderr_bytes": 0,
+            "stdout_tail": "{\"type\":\"thread.started\",\"thread_id\":\"01a00e32-c6b5-7b72-ac64-ca436ecf69a1\"}\n{\"type\":\"turn.started\"}\n",
+            "codex_provider_id": "lcd-ollama",
+            "codex_wire_api": "chat",
+            "compat_proxy_enabled": true,
+            "compat_proxy_target": "http://127.0.0.1:11435",
+            "reasoning_disabled": true,
+            "compat_proxy_stats": {
+              "requests": 1,
+              "rewritten_chat_requests": 1,
+              "upstream_errors": 0,
+              "bytes_in": 33856,
+              "bytes_out": 0
+            }
+          }
+        }
+      ],
+      "context_chars": 178,
+      "local_runtime": {
+        "prompt_eval_count": 0,
+        "eval_count": 0,
+        "total_duration": 0,
+        "load_duration": 0,
+        "prompt_eval_duration": 0,
+        "eval_duration": 0,
+        "codex_wall_clock_seconds": 0,
+        "stdout_bytes": 101,
+        "stderr_bytes": 0,
+        "model": null,
+        "attempts": 1,
+        "wall_clock_seconds": 91.07078480001655,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "telemetry_source": "unavailable",
+        "providers": [],
+        "result_sources": [],
+        "codex_version": null,
+        "model_pull_detected": false
+      },
+      "verification": [],
+      "patch": ""
+    }
+  ]
+}

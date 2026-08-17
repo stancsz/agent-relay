@@ -1,0 +1,8 @@
+diff --git a/tasks.py b/tasks.py
+--- a/tasks.py
++++ b/tasks.py
+@@ -12,2 +12,4 @@
+ def clamp_percent(value: int) -> int:
++    if not 0 <= value <= 100:
++        raise ValueError("percentage must be between 0 and 100")
+     return value
