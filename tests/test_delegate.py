@@ -9,6 +9,7 @@ from agent_relay.delegate import _coerce_worker_patch, collect_context, delegate
 from agent_relay.patch import PatchError, apply_patch, capture_diff
 from agent_relay.patch import worktree_status
 from agent_relay.result import ResultStatus, WorkerResponse
+from agent_relay.sandbox import GitSandbox
 from agent_relay.task import DelegationTask
 
 
@@ -24,6 +25,19 @@ def make_repo(path: Path) -> None:
     )
     subprocess.run(["git", "add", "-A"], cwd=path, check=True)
     subprocess.run(["git", "commit", "-m", "baseline"], cwd=path, check=True, capture_output=True)
+
+
+def test_nested_repository_path_uses_copy_sandbox(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    make_repo(repo)
+    fixture = repo / "fixtures" / "case"
+    fixture.mkdir(parents=True)
+    (fixture / "config.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+    with GitSandbox(fixture, "nested-fixture") as sandbox:
+        assert sandbox.mode == "copy"
+        assert sandbox.path is not None
+        assert (sandbox.path / "config.py").read_text(encoding="utf-8") == "VALUE = 1\n"
 
 
 class FixedWorker:

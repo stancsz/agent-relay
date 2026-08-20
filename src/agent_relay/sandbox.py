@@ -58,6 +58,22 @@ class GitSandbox:
         return self
 
     def _has_clean_commit(self) -> bool:
+        top_level = _git(
+            self.source_repo,
+            ["rev-parse", "--show-toplevel"],
+        )
+        if top_level.returncode != 0:
+            return False
+        # A fixture can live inside the caller's repository and therefore
+        # inherit its .git directory.  It is not safe to create a worktree
+        # from that nested path: Git would materialize the parent repository
+        # instead of the fixture.  Use the copy fallback unless the source
+        # path is itself the repository root.
+        try:
+            if Path(top_level.stdout.strip()).resolve() != self.source_repo:
+                return False
+        except OSError:
+            return False
         head = _git(self.source_repo, ["rev-parse", "--verify", "HEAD"])
         if head.returncode != 0:
             return False
