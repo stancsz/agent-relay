@@ -13,6 +13,11 @@ from evals.runner import (
 )
 
 
+def _assert_fixture_pass(report: dict) -> None:
+    """Keep CI failures actionable when a fixture case diverges by platform."""
+    assert report["status"] == "PASS", json.dumps(report, indent=2, default=str)
+
+
 def test_resumed_records_receive_economics_attestations() -> None:
     records = [
         {
@@ -51,7 +56,7 @@ def test_fixture_suite_passes(tmp_path: Path) -> None:
         suite="bounded-basic",
         repo_root=Path.cwd(),
     )
-    assert report["status"] == "PASS"
+    _assert_fixture_pass(report)
     assert report["metrics"]["bounded_acceptance_rate"] == 1.0
     assert report["metrics"]["blocked_task_correctness"] == 1.0
     assert report["metrics"]["codex_tool_execution_share"] == 0.0
@@ -88,7 +93,7 @@ def test_fixture_suite_compact_handoff_writes_patch_artifacts(tmp_path: Path) ->
         artifact_dir=artifact_dir,
     )
 
-    assert report["status"] == "PASS"
+    _assert_fixture_pass(report)
     assert report["review_mode"] == "compact-handoff"
     assert report["frontier_handoff_tokens_estimate"] > 0
     assert report["full_evidence_artifact"] == "full-records.json"
@@ -144,7 +149,7 @@ def test_suite_checkpoint_can_resume_in_bounded_chunks(tmp_path: Path) -> None:
     )
 
     assert final["run_state"] == "COMPLETE"
-    assert final["status"] == "PASS"
+    _assert_fixture_pass(final)
     assert len(final["cases"]) == 11
 
 
@@ -161,7 +166,7 @@ def test_fixture_suite_aggregate_proof_keeps_failure_index_and_evidence(
         sample=2,
     )
 
-    assert report["status"] == "PASS"
+    _assert_fixture_pass(report)
     assert report["review_mode"] == "aggregate-proof"
     assert report["cases"] == []
     assert len(report["case_index"]["passed"]) == 11
