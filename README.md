@@ -297,6 +297,47 @@ The fixture backend proves task, sandbox, scope, retry, and reporting logic.
 It is not evidence that Qwen can solve the tasks or that Codex tokens were
 saved.
 
+## Codex CLI subagents and review
+
+This repository includes project-scoped custom agents under `.codex/agents/`.
+`sol_high` is the implementation subagent: it uses the exact model slug
+`gpt-5.6-sol` with `model_reasoning_effort = "high"` and may write only within
+the parent task's normal workspace permissions. `reviewer` uses the same
+high-reasoning Sol model but is read-only. Its output is intentionally concise,
+while its instructions require an independent diff review and focused
+verification so it can catch issues a faster `gpt-5.6-luna` implementation may
+miss.
+
+For a direct non-interactive implementation run, use `codex exec` with explicit
+model and sandbox settings:
+
+~~~powershell
+codex exec --cd . --model gpt-5.6-sol --sandbox workspace-write `
+  -c model_reasoning_effort=high `
+  "Implement the bounded task, run the focused tests, and report changed files and evidence."
+~~~
+
+Project custom agents are selected when the parent Codex session spawns a
+subagent. Start an interactive session in this repository and request:
+
+~~~text
+Use sol_high to implement this bounded task. After it finishes, use reviewer
+to inspect the complete diff, run focused verification, and return only concise
+actionable findings. Do not let the reviewer edit files.
+~~~
+
+For a standalone CLI review of all staged, unstaged, and untracked changes:
+
+~~~powershell
+codex review --uncommitted
+~~~
+
+`codex exec` is the scriptable worker interface; add `--json` for JSONL events
+or `--output-last-message` when another tool needs the final message. `codex
+review` is the dedicated non-interactive review interface and does not modify
+the worktree. The project `.codex/config.toml` only caps concurrent subagents;
+it does not alter global Codex configuration.
+
 ## Skill and prompt kit
 
 The reusable Codex skill is in
