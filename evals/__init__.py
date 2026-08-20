@@ -1,2 +1,1 @@
-"""Evaluation fixtures and runner for Local Code Delegate."""
-
+"""Evaluation fixtures and runner for Agent Relay."""

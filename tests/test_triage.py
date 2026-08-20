@@ -2,9 +2,9 @@ import json
 from argparse import Namespace
 from pathlib import Path
 
-from local_code_delegate import cli
-from local_code_delegate.task import DelegationTask
-from local_code_delegate.triage import DelegationDecision, triage_task
+from agent_relay import cli
+from agent_relay.task import DelegationTask
+from agent_relay.triage import DelegationDecision, triage_task
 
 
 def _safe_task(**overrides: object) -> DelegationTask:

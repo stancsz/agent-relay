@@ -1449,7 +1449,7 @@ class CodexCliWorker:
             f"model = {json.dumps(model)}\n"
             f"model_provider = {json.dumps(self.config.provider_id)}\n\n"
             f"[model_providers.\"{self.config.provider_id}\"]\n"
-            "name = \"Local Code Delegate Ollama\"\n"
+            "name = \"Agent Relay Ollama\"\n"
             f"base_url = {json.dumps(provider_base_url.rstrip('/') + '/v1')}\n"
             f"wire_api = {json.dumps(self.config.wire_api)}\n\n"
             "[shell_environment_policy]\n"

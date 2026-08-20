@@ -3,7 +3,7 @@ import json
 from threading import Thread
 from typing import ClassVar
 
-from local_code_delegate.ollama import OllamaClient, OllamaConfig
+from agent_relay.ollama import OllamaClient, OllamaConfig
 
 
 class OllamaHandler(BaseHTTPRequestHandler):

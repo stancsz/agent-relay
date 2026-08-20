@@ -3,7 +3,7 @@ import subprocess
 
 import pytest
 
-from local_code_delegate.patch import (
+from agent_relay.patch import (
     ScopeViolationError,
     apply_patch,
     capture_diff,

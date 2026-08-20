@@ -1,6 +1,6 @@
 import pytest
 
-from local_code_delegate.task import (
+from agent_relay.task import (
     DelegationTask,
     TaskContractError,
     context_path_and_range,

@@ -13,8 +13,8 @@ import re
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from local_code_delegate.patch import patch_paths, validate_patch_scope
-from local_code_delegate.task import (
+from agent_relay.patch import patch_paths, validate_patch_scope
+from agent_relay.task import (
     DelegationTask,
     context_path_and_range,
     normalize_relative_path,

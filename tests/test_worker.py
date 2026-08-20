@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from local_code_delegate.task import DelegationTask
-from local_code_delegate.worker import RetryEvidence, build_prompt, parse_worker_response
+from agent_relay.task import DelegationTask
+from agent_relay.worker import RetryEvidence, build_prompt, parse_worker_response
 
 
 def test_parse_worker_json_with_markdown_fence() -> None:

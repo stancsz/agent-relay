@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 import subprocess
 
-from local_code_delegate.batch import run_batch
-from local_code_delegate.result import WorkerResponse
+from agent_relay.batch import run_batch
+from agent_relay.result import WorkerResponse
 
 
 def _make_repo(path: Path) -> None:

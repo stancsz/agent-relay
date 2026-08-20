@@ -4,12 +4,12 @@ import subprocess
 import pytest
 
 from evals.runner import _local_runtime
-from local_code_delegate.codex_worker import CodexCliError
-from local_code_delegate.delegate import _coerce_worker_patch, collect_context, delegate_local
-from local_code_delegate.patch import PatchError, apply_patch, capture_diff
-from local_code_delegate.patch import worktree_status
-from local_code_delegate.result import ResultStatus, WorkerResponse
-from local_code_delegate.task import DelegationTask
+from agent_relay.codex_worker import CodexCliError
+from agent_relay.delegate import _coerce_worker_patch, collect_context, delegate_local
+from agent_relay.patch import PatchError, apply_patch, capture_diff
+from agent_relay.patch import worktree_status
+from agent_relay.result import ResultStatus, WorkerResponse
+from agent_relay.task import DelegationTask
 
 
 def make_repo(path: Path) -> None:

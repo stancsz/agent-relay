@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Prime"
+  short_description: "Durable Claude Teams with A2A/LAN operations"
+  default_prompt: "Use Claude Prime when bounded implementation, debugging, testing, or review work should run through Claude Code native Agent Teams, with optional durable jobs, profiles, memory, skills, schedules, or authenticated A2A/LAN access."

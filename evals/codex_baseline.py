@@ -20,16 +20,16 @@ import tempfile
 import time
 from typing import Any, Mapping, Sequence
 
-from local_code_delegate.delegate import collect_context
-from local_code_delegate.patch import (
+from agent_relay.delegate import collect_context
+from agent_relay.patch import (
     capture_diff,
     changed_files,
     validate_patch_scope,
 )
-from local_code_delegate.result import ResultStatus
-from local_code_delegate.sandbox import GitSandbox, SandboxError
-from local_code_delegate.task import DelegationTask
-from local_code_delegate.verifier import run_verification
+from agent_relay.result import ResultStatus
+from agent_relay.sandbox import GitSandbox, SandboxError
+from agent_relay.task import DelegationTask
+from agent_relay.verifier import run_verification
 from evals.scope_review import review_task_patch
 
 

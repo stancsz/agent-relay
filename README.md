@@ -1,8 +1,51 @@
-# Local Code Delegate
+# Agent Relay
 
-Local Code Delegate (LCD) is a small, Windows-first Python prototype that lets
-frontier Codex offload tightly bounded coding tasks to a local model through
-Ollama.
+**Agent Relay** is the event-driven gateway and task router for heterogeneous
+AI workers. It routes remote or local work to Codex, Claude, local Qwen, or
+Antigravity according to capability, cost, and verification needs.
+
+Unlike a conventional LLM router, which forwards prompts or API calls between
+models, Agent Relay routes complete **agent harnesses**: tools, permissions,
+workspaces, sandboxes, task contracts, execution policy, and verification move
+with the selected runtime.
+
+The repository was formerly called **Local Code Delegate**. `lcd` and
+`subagent` remain compatibility command aliases; new usage should prefer
+`agent-relay`.
+
+## Unified subagent lanes
+
+This repository is now the single home for bounded subagent work. `lcd` and
+`subagent` remain available for compatibility; new integrations should use the
+`agent-relay` CLI and the canonical lane names:
+
+| Lane | Role | Default | Proof boundary |
+| --- | --- | --- | --- |
+| `local-qwen` | local/free mechanical worker | Qwen3.5:4B through Ollama and Codex CLI | disposable sandbox, scope gate, parent reruns checks |
+| `claude-task` | primary Claude implementation/team worker | authenticated Claude task bridge; optional Agent Teams | task receipt, workspace lock, Git fingerprint |
+| `codex-review` | subscription QA verifier | GPT-5.6 Sol, high reasoning | read-only Codex CLI review receipt |
+| `agy-antigravity` | Google-stack scout/planner | Gemini 3.1 Pro, high effort | plan receipt; parent verifies locally |
+
+List lanes with `agent-relay lanes --json`. Run the subscription verifier with
+`agent-relay review --repo . --model gpt-5.6-sol --reasoning-effort high --uncommitted`.
+That command uses the user's existing Codex CLI login; it does not accept an
+API key and it fails explicitly when the model or entitlement is unavailable.
+
+The Claude implementation is vendored under
+[`lanes/claude-task/`](lanes/claude-task/) from the former Claude Prime project.
+Its native-team and authenticated A2A behavior remains intact; the unified
+skill is [`skills/agent-relay/SKILL.md`](skills/agent-relay/SKILL.md).
+
+The evidence-backed routing and the latest local readiness results are recorded
+in [`docs/SUBAGENT_ROLES.md`](docs/SUBAGENT_ROLES.md).
+
+Consult the Google-stack specialist with
+`agent-relay ask --lane agy-antigravity --repo . --prompt "..." --json`. The
+default is plan mode; it is intended for Gemini, Firebase, Android, Google Cloud,
+browser/UI, and frontend-specific judgment, not unreviewed patch application.
+
+Agent Relay is a small, Windows-first Python prototype that lets a parent agent
+route tightly bounded work to local or hosted specialist workers.
 
 The validated MVP path is:
 
@@ -16,7 +59,8 @@ The important distinction is:
 - Ollama is the inference server.
 - Qwen3.5:4B is the local model.
 - Codex CLI is the local execution harness.
-- LCD is the supervisor, sandbox, verifier, retry gate, and economics ledger.
+- Agent Relay is the supervisor, sandbox, verifier, retry gate, and economics
+  ledger.
 
 This is not a claim that a 4B model can replace Codex. It is an experiment in
 whether Codex can safely spend fewer frontier-model tokens on small,
@@ -36,8 +80,9 @@ worktree outside the worker's write path.
 | Codex CLI over Ollama (codex-ollama) | Implemented and measured |
 | Disposable Git sandbox, patch capture, scope review, verification, retry | Implemented |
 | Compact batch handoff and economics ledger | Implemented |
-| Reusable codex-qwen-delegate skill and prompt kit | Included |
-| Claude Code over Ollama | Planned; no measured result |
+| Agent Relay skill and Qwen worker prompt kit | Included |
+| Claude Code task bridge | Integrated under `lanes/claude-task`; run its capability smoke before use |
+| Antigravity CLI specialist | Integrated as `agy-antigravity`; local CLI smoke is required before use |
 | DeepSeek Harness over Ollama | Planned; no measured result |
 
 Some older files under evals/ contain historical qwen3:4b runs. They are not
@@ -273,13 +318,18 @@ security boundary.
 The implemented command surfaces are:
 
 ~~~text
-lcd doctor       Check Ollama, the exact model, and optional Codex smoke.
-lcd triage       Decide DELEGATE, KEEP_LOCAL, or BLOCKED.
-lcd delegate     Run one bounded task through Ollama or codex-ollama.
-lcd eval         Run a declared suite and produce quality/evidence metrics.
-lcd baseline     Run the matched direct-Codex comparison lane.
-lcd batch        Run independent tasks and return one compact handoff.
-lcd reprice      Estimate compact-handoff economics for a recorded run.
+agent-relay lanes    List the canonical local-qwen, claude-task, codex-review, agy-antigravity lanes
+agent-relay review   Run the read-only Codex subscription QA verifier
+agent-relay ask      Consult the AGY Google-stack specialist in plan mode
+agent-relay doctor   Check Ollama, the exact model, and optional Codex smoke.
+agent-relay triage   Decide DELEGATE, KEEP_LOCAL, or BLOCKED.
+agent-relay delegate Run one bounded task through Ollama or codex-ollama.
+agent-relay eval     Run a declared suite and produce quality/evidence metrics.
+agent-relay baseline Run the matched direct-Codex comparison lane.
+agent-relay batch    Run independent tasks and return one compact handoff.
+agent-relay reprice  Estimate compact-handoff economics for a recorded run.
+
+`subagent` and `lcd` remain compatibility aliases for these command surfaces.
 ~~~
 
 lcd reprice is an estimate of frontier response/handoff accounting. It is not
@@ -299,12 +349,16 @@ saved.
 
 ## Skill and prompt kit
 
-The reusable Codex skill is in
-[skills/codex-qwen-delegate/SKILL.md](skills/codex-qwen-delegate/SKILL.md).
-Its parent/worker prompt kit is in
-[skills/codex-qwen-delegate/references/prompts.md](skills/codex-qwen-delegate/references/prompts.md),
-and the packaged artifact is
-[codex-qwen-delegate.skill](codex-qwen-delegate.skill).
+The unified skill is in
+[skills/agent-relay/SKILL.md](skills/agent-relay/SKILL.md). It defines the common
+lane vocabulary and the worker-versus-verifier authority boundary.
+
+The reusable Agent Relay skill is in
+[skills/agent-relay/SKILL.md](skills/agent-relay/SKILL.md). Its Qwen worker
+guide and prompt kit are in
+[skills/agent-relay/references/qwen-worker.md](skills/agent-relay/references/qwen-worker.md)
+and [skills/agent-relay/references/qwen-prompts.md](skills/agent-relay/references/qwen-prompts.md).
+The packaged artifact is [agent-relay.skill](agent-relay.skill).
 
 The skill's job is to help frontier Codex decide when delegation is worth
 doing, form a bounded contract, invoke the Codex CLI/Qwen lane, and consume
@@ -339,8 +393,9 @@ The current result is promising but narrow:
   excluded from the Codex-token KPI.
 - Passing tests do not prove semantic correctness; the measured review caught
   a structural issue that tests alone did not express.
-- No claim has been measured for Claude Code over Ollama, DeepSeek Harness over
-  Ollama, larger repositories, broad refactors, or ambiguous work.
+- No claim has been measured for Claude task quality, larger repositories,
+  broad refactors, or ambiguous work. The Codex review lane is a verifier
+  adapter, not a claim that every installed account has GPT-5.6 Sol access.
 - A cold model, different Codex release, different prompt settings, or
   different task mix can materially change the numbers.
 
@@ -352,9 +407,12 @@ delegation is the right choice for arbitrary coding work.
 ## Repository layout
 
 ~~~text
-src/local_code_delegate/       Worker, Codex harness, proxy, sandbox, verifier,
+src/agent_relay/       Compatibility Python module containing the
+                                worker, Codex harness, proxy, sandbox, verifier,
                                task contract, triage, batch, and CLI.
-skills/codex-qwen-delegate/    Reusable skill and prompt references.
+lanes/claude-task/             Vendored Claude native-team/A2A worker lane.
+skills/agent-relay/              Unified lane skill and routing contract.
+skills/agent-relay/            Unified skill and worker prompt references.
 evals/cases/                   Bounded benchmark contracts and patch fixtures.
 evals/runner.py                Evaluation execution and gate accounting.
 evals/results/                 Checked-in result ledgers.
@@ -378,7 +436,7 @@ the full evidence artifacts.
 
 ## Bottom line
 
-LCD is a working, measured MVP for one specific question:
+Agent Relay is a working, measured MVP for one specific question:
 
 > Can frontier Codex delegate bounded low-level coding work to Qwen3.5:4B
 > through Ollama, receive a compact verified result, and materially reduce

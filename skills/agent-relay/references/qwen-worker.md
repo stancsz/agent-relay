@@ -1,14 +1,14 @@
 ---
-name: codex-qwen-delegate
+name: agent-relay-qwen-worker
 description: Delegate bounded, low-level coding work from Codex to a second Codex CLI execution harness backed by an Ollama-hosted Qwen model. Use when Codex should offload mechanical, explicitly verifiable edits, construct delegation contracts, run lcd delegate or lcd batch, write delegation prompts, or reduce frontier-token usage without weakening sandbox, scope, or test verification.
 ---
 
-# Codex Qwen Delegate
+# Agent Relay Qwen Worker Reference
 
 Use Codex as the supervisor and Qwen as the bounded implementation worker. Keep
 architecture, decomposition, acceptance criteria, review, repair, and integration
 decisions in the parent Codex context. Let the child Codex CLI process inspect and
-edit only a disposable sandbox, then let Local Code Delegate apply independent
+edit only a disposable sandbox, then let Agent Relay apply independent
 scope and verification gates.
 
 The default model target for all new runs is the exact Ollama tag

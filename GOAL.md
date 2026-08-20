@@ -1,4 +1,40 @@
-# Local Code Delegate
+# Agent Relay
+
+Formerly Local Code Delegate. The `LCD_*` environment variables and `lcd`
+command remain compatibility interfaces for existing evaluations; new project
+documentation should use Agent Relay and `agent-relay`.
+
+## Unified subagent expansion
+
+The repository's unified subagent surface now has four explicit lanes:
+
+| Lane | Role | Default target | Authority boundary |
+|---|---|---|---|
+| `local-qwen` | local/free mechanical worker | Qwen3.5:4B | bounded disposable sandbox and parent verification |
+| `claude-task` | primary Claude implementation/team worker | host policy | authenticated task bridge and Git gates |
+| `codex-review` | subscription QA verifier | GPT-5.6 Sol, high | read-only Codex CLI review receipt |
+| `agy-antigravity` | Google-stack scout/planner | Gemini 3.1 Pro, high | plan consultation; parent owns edits and validation |
+
+The evidence-backed role matrix and local receipts are maintained in
+`docs/SUBAGENT_ROLES.md`. Current readiness is lane-specific: Qwen passed its
+exact-model smoke; Claude authentication and a live CLI probe passed while its
+native Agent Teams agent type is unavailable; Codex review is blocked by the
+installed CLI/model compatibility; and AGY is blocked by a denied permission
+prompt. These are explicit runtime boundaries, not reasons to silently fall
+back to another lane.
+
+## Agent-harness routing boundary
+
+Most model routers operate at the LLM layer: they relay a prompt, completion,
+or API request to a selected model. Agent Relay operates one level higher. It
+routes complete agent harnesses, including their tools, permissions,
+workspace, sandbox, task contract, execution policy, and verification path.
+
+The central design claim is therefore **agent-harness-level relay/routing**,
+not merely model selection. Codex, Claude, local Qwen, and Antigravity are
+different execution environments with different authority and proof
+boundaries; the router must select and supervise the runtime, not only forward
+text to an LLM.
 
 ## 1. Mission
 
@@ -20,8 +56,8 @@ spent.
 
 Detailed measurement rules live in EVALS.md.
 
-The primary reusable deliverable is the `codex-qwen-delegate` Codex skill in
-`skills/codex-qwen-delegate/`. It teaches the parent Codex how to decide what to
+The primary reusable deliverable is the `agent-relay` skill in
+`skills/agent-relay/`. Its Qwen worker reference teaches the parent Codex how to decide what to
 delegate, construct a minimal task contract, invoke a second Codex CLI process
 backed by Qwen through Ollama, and review a compact verified handoff. Its prompt
 kit is part of the implementation, not an informal example. The skill must
@@ -267,13 +303,13 @@ write scope.
 ## 7. Initial architecture
 
 ~~~text
-local-code-delegate/
+agent-relay/
 ├── GOAL.md
 ├── EVALS.md
 ├── README.md
 ├── pyproject.toml
 ├── src/
-│   └── local_code_delegate/
+│   └── agent_relay/          # canonical Python module
 │       ├── __init__.py
 │       ├── cli.py
 │       ├── task.py

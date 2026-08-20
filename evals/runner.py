@@ -12,18 +12,18 @@ import tempfile
 import time
 from typing import Any, Mapping, Sequence
 
-from local_code_delegate.delegate import delegate_local
-from local_code_delegate.codex_worker import CodexCliConfig, CodexCliWorker
-from local_code_delegate.frontier import (
+from agent_relay.delegate import delegate_local
+from agent_relay.codex_worker import CodexCliConfig, CodexCliWorker
+from agent_relay.frontier import (
     MANIFEST_MODES,
     frontier_budget,
     task_manifest,
     token_estimate,
 )
-from local_code_delegate.ollama import OllamaClient, OllamaConfig
-from local_code_delegate.patch import PatchError, check_patch, patch_paths
-from local_code_delegate.result import ResultStatus, WorkerResponse
-from local_code_delegate.task import DelegationTask, context_path_and_range
+from agent_relay.ollama import OllamaClient, OllamaConfig
+from agent_relay.patch import PatchError, check_patch, patch_paths
+from agent_relay.result import ResultStatus, WorkerResponse
+from agent_relay.task import DelegationTask, context_path_and_range
 from evals.scope_review import review_task_patch
 
 

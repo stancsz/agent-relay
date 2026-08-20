@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "local-code-delegate"
+name = "agent-relay"
 version = "0.1.0"
-description = "Bounded, verified local coding delegation through Ollama"
+description = "Event-driven heterogeneous agent gateway and task router"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
@@ -14,7 +14,9 @@ dependencies = []
 dev = ["pytest>=8"]
 
 [project.scripts]
-lcd = "local_code_delegate.cli:main"
+agent-relay = "agent_relay.cli:main"
+lcd = "agent_relay.cli:main"
+subagent = "agent_relay.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

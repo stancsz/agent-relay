@@ -2,8 +2,8 @@ from argparse import Namespace
 import json
 from pathlib import Path
 
-from local_code_delegate import cli
-from local_code_delegate.result import DelegationResult, ResultStatus
+from agent_relay import cli
+from agent_relay.result import DelegationResult, ResultStatus
 
 
 def test_eval_runner_loader_resolves_repo_local_evals() -> None:

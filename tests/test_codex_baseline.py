@@ -3,7 +3,7 @@ from evals.codex_baseline import (
     resolve_codex_executable,
     usage_from_events,
 )
-from local_code_delegate.task import DelegationTask
+from agent_relay.task import DelegationTask
 
 
 def test_usage_from_events_sums_turns_and_distinguishes_telemetry() -> None:

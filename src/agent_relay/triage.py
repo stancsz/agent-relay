@@ -82,7 +82,7 @@ class TriageResult:
                 if self.leverage is not None
                 else "All safety gates passed."
             )
-            next_action = "Build the minimal contract and call lcd delegate or lcd batch."
+            next_action = "Build the minimal contract and call agent-relay delegate or batch."
         elif self.decision is DelegationDecision.BLOCKED:
             why = "The task contract is incomplete for a safe delegation decision."
             next_action = "Complete the required contract fields, then run triage again."

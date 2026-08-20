@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from evals.scope_review import review_task_patch
-from local_code_delegate.task import DelegationTask
+from agent_relay.task import DelegationTask
 
 
 ROOT = Path(__file__).resolve().parents[1]

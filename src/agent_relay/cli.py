@@ -12,7 +12,10 @@ import time
 from typing import Any
 
 from .codex_worker import CodexCliConfig, CodexCliError, CodexCliWorker
+from .codex_review import CodexReviewConfig, run_codex_review
+from .agy_antigravity import AgyConfig, run_agy
 from .delegate import delegate_local
+from .lanes import canonical_lane_name, lane_manifest
 from .ollama import OllamaClient, OllamaConfig, OllamaError
 from .task import DelegationTask
 from .triage import DelegationDecision, triage_task
@@ -37,8 +40,8 @@ def _load_eval_runner(repo: Path):
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="lcd",
-        description="Bounded, verified coding delegation through local Ollama or Codex CLI.",
+        prog="agent-relay",
+        description="Agent Relay: unified bounded workers and independent verifiers.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -58,7 +61,7 @@ def _parser() -> argparse.ArgumentParser:
     delegate.add_argument("--repo", type=Path, default=Path.cwd())
     delegate.add_argument(
         "--backend",
-        choices=("ollama", "codex-ollama"),
+        choices=("ollama", "codex-ollama", "local-qwen"),
         default="ollama",
     )
     delegate.add_argument("--model")
@@ -99,6 +102,38 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="write the full patch to this artifact path",
     )
+
+    lanes = subparsers.add_parser("lanes", help="list canonical subagent lanes")
+    lanes.add_argument("--json", action="store_true", dest="as_json")
+
+    review = subparsers.add_parser(
+        "review",
+        help="run the read-only Codex subscription QA verifier",
+    )
+    review.add_argument("--repo", type=Path, default=Path.cwd())
+    review.add_argument("--base")
+    review.add_argument("--uncommitted", action="store_true", default=True)
+    review.add_argument("--prompt")
+    review.add_argument("--model")
+    review.add_argument("--reasoning-effort")
+    review.add_argument("--codex-bin")
+    review.add_argument("--timeout-seconds", type=float)
+    review.add_argument("--json", action="store_true", dest="as_json")
+
+    ask = subparsers.add_parser(
+        "ask",
+        help="consult a specialist lane without accepting its edits as proof",
+    )
+    ask.add_argument("--lane", choices=("agy-antigravity",), default="agy-antigravity")
+    ask.add_argument("--repo", type=Path, default=Path.cwd())
+    ask.add_argument("--prompt", required=True)
+    ask.add_argument("--model")
+    ask.add_argument("--effort")
+    ask.add_argument("--mode", choices=("plan", "accept-edits"))
+    ask.add_argument("--no-sandbox", action="store_true")
+    ask.add_argument("--timeout-seconds", type=float)
+    ask.add_argument("--agy-bin")
+    ask.add_argument("--json", action="store_true", dest="as_json")
 
     triage = subparsers.add_parser(
         "triage",
@@ -380,8 +415,8 @@ def _codex_smoke(*, model: str | None, host: str | None) -> dict[str, Any]:
         (root / "value.py").write_text("VALUE = 1\n", encoding="utf-8")
         for command in (
             ["init", "--quiet"],
-            ["config", "user.name", "Local Code Delegate Doctor"],
-            ["config", "user.email", "local-code-delegate@example.invalid"],
+            ["config", "user.name", "Agent Relay Doctor"],
+            ["config", "user.email", "agent-relay@example.invalid"],
             ["add", "value.py"],
             ["commit", "--quiet", "-m", "Codex doctor baseline"],
         ):
@@ -471,8 +506,9 @@ def _delegate(args: argparse.Namespace) -> int:
         return 2
 
     triage_result = None
+    backend = "codex-ollama" if args.backend == "local-qwen" else args.backend
     triage_required = getattr(args, "require_triage", False) or (
-        args.backend == "codex-ollama"
+        backend == "codex-ollama"
         and not getattr(args, "allow_untriaged", False)
     )
     if triage_required:
@@ -493,7 +529,7 @@ def _delegate(args: argparse.Namespace) -> int:
             }, ensure_ascii=False, indent=2))
             return 1 if triage_result.decision is DelegationDecision.KEEP_LOCAL else 2
 
-    if args.backend == "codex-ollama":
+    if backend == "codex-ollama":
         result = delegate_local(
             task=task,
             repo=args.repo,
@@ -521,6 +557,62 @@ def _delegate(args: argparse.Namespace) -> int:
         payload["triage"] = triage_result.to_dict()
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0 if result.success else 2
+
+
+def _lanes(args: argparse.Namespace) -> int:
+    payload = {"lanes": lane_manifest()}
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _review(args: argparse.Namespace) -> int:
+    try:
+        config = CodexReviewConfig.from_env(
+            executable=args.codex_bin,
+            model=args.model,
+            reasoning_effort=args.reasoning_effort,
+            timeout_seconds=args.timeout_seconds,
+        )
+        result = run_codex_review(
+            args.repo,
+            base=args.base,
+            uncommitted=args.uncommitted,
+            prompt=args.prompt,
+            config=config,
+        )
+        print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if result.passed else 2
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        print(json.dumps({
+            "lane": "codex-review",
+            "status": "FAILED",
+            "summary": str(exc),
+            "runtime": {"read_only": True},
+        }, ensure_ascii=False, indent=2))
+        return 2
+
+
+def _ask(args: argparse.Namespace) -> int:
+    try:
+        config = AgyConfig.from_env(
+            executable=args.agy_bin,
+            model=args.model,
+            effort=args.effort,
+            mode=args.mode,
+            sandbox=not args.no_sandbox,
+            timeout_seconds=args.timeout_seconds,
+        )
+        result = run_agy(args.repo, args.prompt, config=config)
+        print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if result.passed else 2
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        print(json.dumps({
+            "lane": "agy-antigravity",
+            "status": "FAILED",
+            "summary": str(exc),
+            "runtime": {"read_only_default": True},
+        }, ensure_ascii=False, indent=2))
+        return 2
 
 
 def _triage(args: argparse.Namespace) -> int:
@@ -661,6 +753,12 @@ def main(argv: list[str] | None = None) -> int:
         return _doctor(args)
     if args.command == "delegate":
         return _delegate(args)
+    if args.command == "lanes":
+        return _lanes(args)
+    if args.command == "review":
+        return _review(args)
+    if args.command == "ask":
+        return _ask(args)
     if args.command == "triage":
         return _triage(args)
     if args.command == "eval":

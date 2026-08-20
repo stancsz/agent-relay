@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 
 import pytest
 
-from local_code_delegate.codex_proxy import OllamaCompatProxy
+from agent_relay.codex_proxy import OllamaCompatProxy
 
 
 class _UpstreamState:

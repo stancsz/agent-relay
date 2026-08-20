@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from local_code_delegate.codex_worker import (
+from agent_relay.codex_worker import (
     CodexCliConfig,
     CodexCliError,
     CodexCliWorker,
@@ -17,8 +17,8 @@ from local_code_delegate.codex_worker import (
     _recover_code_block_patch,
     build_codex_prompt,
 )
-from local_code_delegate.task import DelegationTask
-from local_code_delegate.worker import RetryEvidence
+from agent_relay.task import DelegationTask
+from agent_relay.worker import RetryEvidence
 
 
 def _task(*, task_id: str = "codex-worker") -> DelegationTask:
@@ -526,7 +526,7 @@ def test_codex_worker_captures_inner_diff_and_runtime(
             edit_value=2,
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     result = CodexCliWorker(
         repo=tmp_path,
         model="qwen3.5:4b",
@@ -582,8 +582,8 @@ def test_codex_worker_records_and_cleans_up_compat_proxy(
             edit_value=2,
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.OllamaCompatProxy", FakeProxy)
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.OllamaCompatProxy", FakeProxy)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     config = CodexCliConfig(
         executable="fake-codex",
         ollama_host="http://127.0.0.1:11435",
@@ -625,7 +625,7 @@ def test_codex_worker_preserves_blocked_result(
             ),
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     result = CodexCliWorker(
         repo=tmp_path,
         config=_fake_config(),
@@ -665,7 +665,7 @@ def test_codex_worker_accepts_reported_patch_when_tools_are_unavailable(
             }),
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     result = CodexCliWorker(
         repo=tmp_path,
         config=_fake_config(),
@@ -706,7 +706,7 @@ def test_codex_worker_prefers_inner_diff_over_redundant_reported_candidate(
             edit_value=2,
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     result = CodexCliWorker(
         repo=tmp_path,
         config=_fake_config(),
@@ -750,7 +750,7 @@ def test_codex_worker_falls_back_to_file_candidate_when_patch_does_not_apply(
             }),
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     result = CodexCliWorker(
         repo=tmp_path,
         config=_fake_config(),
@@ -787,7 +787,7 @@ def test_codex_worker_recovers_source_fence_when_reported_patch_fails(
             ),
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     result = CodexCliWorker(
         repo=tmp_path,
         model="qwen3.5:4b",
@@ -844,7 +844,7 @@ def test_codex_worker_recovers_diff_fence_after_empty_ready_envelope(
             ),
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     result = CodexCliWorker(
         repo=tmp_path,
         model="qwen3.5:4b",
@@ -873,7 +873,7 @@ def test_codex_worker_recovers_inner_diff_from_malformed_final_result(
             edit_value=2,
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     result = CodexCliWorker(
         repo=tmp_path,
         config=_fake_config(),
@@ -903,7 +903,7 @@ def test_codex_worker_recovers_single_file_code_block_from_prose(
             ),
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     result = CodexCliWorker(
         repo=tmp_path,
         model="qwen3.5:4b",
@@ -1190,7 +1190,7 @@ def test_codex_worker_makes_rejected_python_fragment_retryable(
             final_text="```python\nif value < 0: raise ValueError\n```",
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     task = DelegationTask(
         task_id="fragment-retryable",
         objective="Reject negative timeout values.",
@@ -1247,7 +1247,7 @@ def test_codex_worker_surfaces_cli_failure(
             stderr_text="local failure",
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     with pytest.raises(CodexCliError, match="code 7"):
         CodexCliWorker(
             repo=tmp_path,
@@ -1271,7 +1271,7 @@ def test_codex_worker_rejects_implicit_model_pull(
             stderr_text="Pulling model qwen3.5:4b...\n",
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     with pytest.raises(CodexCliError, match="implicit Ollama model pull"):
         CodexCliWorker(
             repo=tmp_path,
@@ -1296,7 +1296,7 @@ def test_codex_worker_aborts_model_pull_before_process_exit(
             delay_after_stderr=2.0,
         )
 
-    monkeypatch.setattr("local_code_delegate.codex_worker.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("agent_relay.codex_worker.subprocess.Popen", fake_popen)
     started = time.perf_counter()
     with pytest.raises(CodexCliError, match="implicit Ollama model pull") as caught:
         CodexCliWorker(
@@ -1322,7 +1322,7 @@ def test_codex_worker_aborts_stalled_no_progress_lane(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "local_code_delegate.codex_worker._terminate_process_tree",
+        "agent_relay.codex_worker._terminate_process_tree",
         lambda value: value.kill(),
     )
 
@@ -1353,7 +1353,7 @@ def test_codex_worker_no_progress_diagnostics_are_bounded(
     (tmp_path / "stderr.log").write_text("e" * 20_000, encoding="utf-8")
     (tmp_path / "stdout.jsonl").write_text("o" * 20_000, encoding="utf-8")
     monkeypatch.setattr(
-        "local_code_delegate.codex_worker._terminate_process_tree",
+        "agent_relay.codex_worker._terminate_process_tree",
         lambda value: value.kill(),
     )
 

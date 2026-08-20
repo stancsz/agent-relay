@@ -86,8 +86,8 @@ class GitSandbox:
 
         for args in (
             ["init"],
-            ["config", "user.name", "Local Code Delegate"],
-            ["config", "user.email", "local-code-delegate@example.invalid"],
+            ["config", "user.name", "Agent Relay"],
+            ["config", "user.email", "agent-relay@example.invalid"],
             ["add", "-A"],
             ["commit", "-m", "sandbox baseline", "--quiet"],
         ):

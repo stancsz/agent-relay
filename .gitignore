@@ -10,3 +10,4 @@ build/
 *.egg-info/
 evals/results/*.json
 !evals/results/qwen35-4b-codex0147-bounded-50-v8-economics-measured.json
+lanes/claude-task/scripts/test-fixtures/**/last-args.txt

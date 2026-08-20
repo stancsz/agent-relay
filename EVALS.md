@@ -1,4 +1,8 @@
-# Local Code Delegate Evaluation Plan
+# Agent Relay Evaluation Plan
+
+This document preserves the historical `LCD_*` environment variables and
+`lcd` command names so recorded runs remain reproducible. The current product
+identity is Agent Relay.
 
 ## 1. Purpose
 
@@ -165,7 +169,7 @@ reviewability, keep it as a diagnostic variant and do not make it the default.
 The reusable skill is part of the product surface. Before treating a prompt or
 workflow change as complete, verify all of the following:
 
-- `skills/codex-qwen-delegate/SKILL.md` passes the skill validator and packages
+- `skills/agent-relay/SKILL.md` passes the skill validator and packages
   successfully;
 - the skill routes through `lcd delegate --backend codex-ollama` or
   `lcd batch`, rather than asking Qwen to bypass the outer verifier;

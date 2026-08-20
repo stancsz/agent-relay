@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from local_code_delegate.frontier import frontier_budget, task_manifest, token_estimate
+from agent_relay.frontier import frontier_budget, task_manifest, token_estimate
 
 
 def test_frontier_budget_counts_compact_packet_and_selected_artifacts(
