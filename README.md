@@ -448,12 +448,11 @@ delegation is the right choice for arbitrary coding work.
 ## Repository layout
 
 ~~~text
-src/agent_relay/       Compatibility Python module containing the
-                                worker, Codex harness, proxy, sandbox, verifier,
+src/agent_relay/       Canonical Python module containing the worker, Codex
+                                harness, proxy, sandbox, verifier,
                                task contract, triage, batch, and CLI.
 lanes/claude-task/             Vendored Claude native-team/A2A worker lane.
-skills/agent-relay/              Unified lane skill and routing contract.
-skills/agent-relay/            Unified skill and worker prompt references.
+skills/agent-relay/              Unified skill, lane routing, and worker prompt references.
 evals/cases/                   Bounded benchmark contracts and patch fixtures.
 evals/runner.py                Evaluation execution and gate accounting.
 evals/results/                 Checked-in result ledgers.
