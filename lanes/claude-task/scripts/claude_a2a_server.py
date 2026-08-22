@@ -809,21 +809,52 @@ class A2AState:
         communication_thread.start()
         last_heartbeat = 0.0
         started = time.monotonic()
+
+        def force_stop() -> None:
+            """Stop the CLI process without allowing cleanup to hang forever."""
+            if process.poll() is not None:
+                return
+            if os.name == "nt":
+                try:
+                    subprocess.run(
+                        ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                        check=False,
+                    )
+                except (OSError, subprocess.SubprocessError):
+                    pass
+            if process.poll() is None:
+                try:
+                    process.kill()
+                except OSError:
+                    pass
+
+        stop_requested = False
         while communication_thread.is_alive():
             now = time.monotonic()
             if heartbeat and now - last_heartbeat >= 1:
                 heartbeat()
                 last_heartbeat = now
-            if cancel_event and cancel_event.is_set() and process.poll() is None:
-                if os.name == "nt":
-                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, text=True)
-                else:
-                    process.terminate()
-            if self.timeout_seconds is not None and now - started > self.timeout_seconds + 15 and process.poll() is None:
-                if os.name == "nt":
-                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, text=True)
-                else:
-                    process.terminate()
+            cancelled = bool(cancel_event and cancel_event.is_set())
+            timed_out = self.timeout_seconds is not None and now - started > self.timeout_seconds + 15
+            if cancelled or timed_out:
+                stop_requested = True
+                force_stop()
+                # A descendant can retain stdout/stderr after the parent has
+                # exited. Do not let that orphaned pipe keep the durable job
+                # in `running` forever; close our handles and finish with a
+                # bounded timeout receipt.
+                if communication_thread.is_alive():
+                    for stream in (process.stdout, process.stderr):
+                        if stream is not None:
+                            try:
+                                stream.close()
+                            except OSError:
+                                pass
+                    communication_thread.join(timeout=2)
+                break
             communication_thread.join(timeout=0.25)
 
         returncode = process.returncode if process.returncode is not None else 1
@@ -853,6 +884,10 @@ class A2AState:
         if cancel_event and cancel_event.is_set():
             receipt["accepted"] = False
             receipt["json_parse_error"] = "job cancellation requested"
+        if stop_requested and not receipt.get("timed_out"):
+            receipt["accepted"] = False
+            receipt["timed_out"] = True
+            receipt.setdefault("json_parse_error", "CLI delegate exceeded the bounded timeout or was cancelled")
         receipt.setdefault("stderr", communication["stderr"])
         shutil.rmtree(temp_root, ignore_errors=True)
         return receipt, returncode
