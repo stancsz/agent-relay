@@ -44,6 +44,20 @@ Consult the Google-stack specialist with
 default is plan mode; it is intended for Gemini, Firebase, Android, Google Cloud,
 browser/UI, and frontend-specific judgment, not unreviewed patch application.
 
+The AGY lane uses the standalone Antigravity CLI, not the Antigravity IDE
+launcher. Install it with the official installer, then verify it from a fresh
+login shell:
+
+~~~text
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+zsh -lic 'command -v agy; agy --version'
+agy -p 'Reply with exactly AGY_CLI_OK.' --output-format json --print-timeout 30s
+~~~
+
+The JSON result must contain `status: SUCCESS` and a nonempty `response`. Do
+not use `agy chat` or treat an Electron launch with exit code 0 as a delegated
+response.
+
 Agent Relay is a small, Windows-first Python prototype that lets a parent agent
 route tightly bounded work to local or hosted specialist workers.
 
@@ -82,7 +96,7 @@ worktree outside the worker's write path.
 | Compact batch handoff and economics ledger | Implemented |
 | Agent Relay skill and Qwen worker prompt kit | Included |
 | Claude Code task bridge | Integrated under `lanes/claude-task`; run its capability smoke before use |
-| Antigravity CLI specialist | Integrated as `agy-antigravity`; local CLI smoke is required before use |
+| Antigravity CLI specialist | Integrated as `agy-antigravity`; standalone headless CLI smoke is required before use |
 | DeepSeek Harness over Ollama | Planned; no measured result |
 
 Some older files under evals/ contain historical qwen3:4b runs. They are not

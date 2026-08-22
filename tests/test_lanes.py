@@ -94,6 +94,19 @@ def test_agy_config_defaults_to_google_specialist() -> None:
     assert config.sandbox is True
 
 
+def test_agy_config_prefers_standalone_cli_path(monkeypatch) -> None:
+    monkeypatch.delenv("SUBAGENT_AGY_BIN", raising=False)
+    monkeypatch.setattr(
+        "agent_relay.agy_antigravity._preferred_agy_path",
+        lambda: "/home/tester/.local/bin/agy",
+    )
+    monkeypatch.setattr("agent_relay.agy_antigravity.shutil.which", lambda _: "ide-agy")
+
+    config = AgyConfig.from_env()
+
+    assert config.executable == "/home/tester/.local/bin/agy"
+
+
 def test_agy_adapter_is_plan_mode_by_default(tmp_path, monkeypatch) -> None:
     calls = []
 
@@ -102,7 +115,7 @@ def test_agy_adapter_is_plan_mode_by_default(tmp_path, monkeypatch) -> None:
         return subprocess.CompletedProcess(
             command,
             0,
-            stdout='{"response":"Firebase and Android checks identified."}\n',
+            stdout='{"status":"SUCCESS","response":"Firebase and Android checks identified."}\n',
             stderr="",
         )
 
@@ -123,7 +136,66 @@ def test_agy_adapter_is_plan_mode_by_default(tmp_path, monkeypatch) -> None:
     assert result.passed
     assert "Firebase" in result.response
     command, kwargs = calls[0]
+    assert command[1] == "--print"
+    assert "Review the Google-specific integration risks." in command[2]
+    assert command[3:5] == ["--output-format", "json"]
     assert "--plan" not in command
     assert "--mode" in command and "plan" in command
     assert "--sandbox" in command
     assert kwargs["cwd"] == tmp_path.resolve()
+
+
+def test_agy_adapter_rejects_empty_response(tmp_path, monkeypatch) -> None:
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr("agent_relay.agy_antigravity.subprocess.run", fake_run)
+    result = run_agy(
+        tmp_path,
+        "Reply with exactly OK.",
+        config=AgyConfig(executable="agy-test", timeout_seconds=1),
+    )
+
+    assert result.status == "FAILED"
+    assert result.passed is False
+    assert "empty response" in result.summary
+
+
+def test_agy_adapter_rejects_non_success_json(tmp_path, monkeypatch) -> None:
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout='{"status":"ERROR","error":"authentication required"}\n',
+            stderr="",
+        )
+
+    monkeypatch.setattr("agent_relay.agy_antigravity.subprocess.run", fake_run)
+    result = run_agy(
+        tmp_path,
+        "Reply with exactly OK.",
+        config=AgyConfig(executable="agy-test", timeout_seconds=1),
+    )
+
+    assert result.status == "FAILED"
+    assert "status ERROR" in result.summary
+
+
+def test_agy_adapter_rejects_electron_warning_even_with_zero_exit(tmp_path, monkeypatch) -> None:
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout='{"status":"SUCCESS","response":"looks valid"}\n',
+            stderr="Warning: 'print' is not in the list of known options, but still passed to Electron/Chromium.\n",
+        )
+
+    monkeypatch.setattr("agent_relay.agy_antigravity.subprocess.run", fake_run)
+    result = run_agy(
+        tmp_path,
+        "Reply with exactly OK.",
+        config=AgyConfig(executable="agy-test", timeout_seconds=1),
+    )
+
+    assert result.status == "FAILED"
+    assert "Electron launcher" in result.summary
