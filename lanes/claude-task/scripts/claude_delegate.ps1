@@ -39,6 +39,20 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function Remove-JsonUnsafeControls {
+    param([AllowNull()][string]$Value)
+    if ($null -eq $Value) { return $null }
+    $builder = [Text.StringBuilder]::new()
+    foreach ($character in $Value.ToCharArray()) {
+        $code = [int][char]$character
+        # Keep JSON whitespace, drop terminal/control escapes that some
+        # Claude reports include inside otherwise valid output-format JSON.
+        if ($code -lt 32 -and $code -notin @(9, 10, 13)) { continue }
+        [void]$builder.Append($character)
+    }
+    return $builder.ToString()
+}
+
 function Invoke-GitText {
     param([string[]]$Arguments)
     # Git may emit a harmless line-ending warning on stderr for this Windows
@@ -343,6 +357,8 @@ if ($ExpectNoChange) {
 $claudeResultText = if ($Transport -eq 'Mcp') { if ($null -ne $parsed) { [string]$parsed.result_text } else { '' } } elseif ($null -ne $parsed) { [string]$parsed.result } else { '' }
 $claudeUsage = if ($null -ne $parsed) { $parsed.usage } else { $null }
 $claudeModelUsage = if ($null -ne $parsed) { $parsed.modelUsage } else { $null }
+$receiptStdout = Remove-JsonUnsafeControls -Value $stdout
+$receiptStderr = Remove-JsonUnsafeControls -Value $stderr
 $accepted = (-not $timedOut) -and ($exitCode -eq 0) -and ($subtype -eq 'success') -and
     (-not [string]::IsNullOrWhiteSpace($stdout)) -and (-not $isError) -and
     ($permissionDenials.Count -eq 0) -and (-not $branchOrHeadChanged) -and
@@ -399,8 +415,8 @@ $result = [ordered]@{
     status_after = $after.status
     changed_paths_after = $after.changed_paths
     staged_paths_after = $after.staged_paths
-    stdout = $stdout
-    stderr = $stderr
+    stdout = $receiptStdout
+    stderr = $receiptStderr
 }
 
 $json = $result | ConvertTo-Json -Depth 12
