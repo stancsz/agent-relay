@@ -990,9 +990,11 @@ class A2AState:
                 verifier_objective += "\n\nWorker receipts (inspect, do not trust blindly):\n" + json.dumps(worker_receipts, ensure_ascii=False)[:8000]
             verifier_task = {**task, "target_role": "verifier", "objective": verifier_objective}
             verifier_include_paths = list(target_paths)
-            if task.get("target_role") == "verifier":
+            if run_verifier:
                 # Bounded verifier prompts name their exact source files. Copy
                 # only those paths instead of cloning a dirty novel checkout.
+                # This applies to both direct verifier tasks and team tasks
+                # whose fallback verifier runs after the worker sequence.
                 # Keep the full-copy fallback for older packets without a
                 # recognizable file list.
                 objective_paths = re.findall(

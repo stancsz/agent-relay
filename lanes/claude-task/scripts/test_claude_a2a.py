@@ -381,6 +381,67 @@ def test_cli_verifier_cannot_mutate_caller_workspace() -> None:
         shutil.rmtree(workspace, ignore_errors=True)
 
 
+def test_team_fallback_verifier_copies_objective_sources() -> None:
+    """Team fallback verifiers receive the explicitly named source files."""
+    workspace = Path(tempfile.mkdtemp(prefix="cli-team-verifier-sources-"))
+    try:
+        target = workspace / "target.txt"
+        source = workspace / "docs" / "input.md"
+        target.write_text("stable\n", encoding="utf-8")
+        source.parent.mkdir(parents=True)
+        source.write_text("source evidence\n", encoding="utf-8")
+        git("init", "--quiet", cwd=workspace)
+        git("config", "user.email", "a2a@example.invalid", cwd=workspace)
+        git("config", "user.name", "a2a-test", cwd=workspace)
+        git("add", "-A", cwd=workspace)
+        git("commit", "--quiet", "-m", "init", cwd=workspace)
+
+        state = A2AState(Namespace(
+            workspace_root=str(workspace), auth_token="lan-secret",
+            worker_agent_type=None, verifier_agent_type=None,
+            timeout_seconds=None, state_dir=None,
+        ))
+        task = build_task(
+            task_id="cli-team-verifier-sources",
+            target_role="team",
+            operation="team",
+            target_paths=["target.txt"],
+            objective=(
+                "Read target.txt and docs/input.md only; verify the declared source "
+                "docs/input.md is present in the bounded verifier workspace."
+            ),
+            acceptance_criteria=["The verifier can read the named source."],
+            constraints=["Read-only verifier."],
+            inputs=[],
+            team={"name": "source-copy", "members": [
+                {"name": "writer", "role": "worker", "objective": "No-op."},
+                {"name": "reviewer", "role": "verifier", "objective": "Check docs/input.md."},
+            ]},
+            expected_change=False,
+        )
+        verifier_workspaces: list[Path] = []
+
+        def fake_delegate(delegate_workspace: Path, *_args, **_kwargs):
+            if delegate_workspace != workspace:
+                verifier_workspaces.append(delegate_workspace)
+                assert (delegate_workspace / "docs" / "input.md").is_file()
+            return ({
+                "accepted": True,
+                "unexpected_worktree_change": False,
+                "branch_or_head_changed": False,
+                "stdout": "bounded result",
+            }, 0)
+
+        state._run_cli_delegate_once = fake_delegate  # type: ignore[method-assign]
+        result = state._run_cli_fallback_locked(task, workspace)
+
+        assert result["status"] == "done", result
+        assert result["server_receipt"]["verifier_isolated"] is True, result
+        assert verifier_workspaces and not verifier_workspaces[0].exists()
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
 def test_cli_delegate_timeout_does_not_wait_for_orphaned_pipes() -> None:
     """A dead child with inherited pipes must produce a bounded timeout receipt."""
     workspace = Path(tempfile.mkdtemp(prefix="cli-timeout-pipes-"))
