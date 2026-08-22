@@ -799,15 +799,6 @@ class A2AState:
             cwd=str(workspace),
         )
         communication: dict[str, str] = {"stdout": "", "stderr": ""}
-
-        def communicate() -> None:
-            stdout, stderr = process.communicate()
-            communication["stdout"] = stdout
-            communication["stderr"] = stderr
-
-        communication_thread = threading.Thread(target=communicate, daemon=True)
-        communication_thread.start()
-        last_heartbeat = 0.0
         started = time.monotonic()
 
         def force_stop() -> None:
@@ -831,31 +822,52 @@ class A2AState:
                 except OSError:
                     pass
 
+        heartbeat_stop = threading.Event()
+
+        def heartbeat_loop() -> None:
+            while not heartbeat_stop.is_set():
+                if heartbeat:
+                    heartbeat()
+                heartbeat_stop.wait(1)
+
+        heartbeat_thread = threading.Thread(target=heartbeat_loop, daemon=True)
+        heartbeat_thread.start()
         stop_requested = False
-        while communication_thread.is_alive():
-            now = time.monotonic()
-            if heartbeat and now - last_heartbeat >= 1:
-                heartbeat()
-                last_heartbeat = now
-            cancelled = bool(cancel_event and cancel_event.is_set())
-            timed_out = self.timeout_seconds is not None and now - started > self.timeout_seconds + 15
-            if cancelled or timed_out:
-                stop_requested = True
-                force_stop()
-                # A descendant can retain stdout/stderr after the parent has
-                # exited. Do not let that orphaned pipe keep the durable job
-                # in `running` forever; close our handles and finish with a
-                # bounded timeout receipt.
-                if communication_thread.is_alive():
-                    for stream in (process.stdout, process.stderr):
-                        if stream is not None:
-                            try:
-                                stream.close()
-                            except OSError:
-                                pass
-                    communication_thread.join(timeout=2)
-                break
-            communication_thread.join(timeout=0.25)
+        try:
+            while True:
+                cancelled = bool(cancel_event and cancel_event.is_set())
+                timed_out = self.timeout_seconds is not None and time.monotonic() - started > self.timeout_seconds + 15
+                if cancelled or timed_out:
+                    stop_requested = True
+                    force_stop()
+                    # A descendant can retain stdout/stderr after the parent
+                    # has exited. Give communicate a short, bounded chance to
+                    # drain them, then close our handles and return a timeout
+                    # receipt instead of leaving the durable job running.
+                    try:
+                        stdout, stderr = process.communicate(timeout=2)
+                        communication["stdout"] = stdout
+                        communication["stderr"] = stderr
+                    except subprocess.TimeoutExpired as exc:
+                        communication["stdout"] = str(getattr(exc, "output", "") or "")
+                        communication["stderr"] = str(getattr(exc, "stderr", "") or "")
+                        for stream in (process.stdout, process.stderr):
+                            if stream is not None:
+                                try:
+                                    stream.close()
+                                except OSError:
+                                    pass
+                    break
+                try:
+                    stdout, stderr = process.communicate(timeout=1)
+                    communication["stdout"] = stdout
+                    communication["stderr"] = stderr
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+        finally:
+            heartbeat_stop.set()
+            heartbeat_thread.join(timeout=2)
 
         returncode = process.returncode if process.returncode is not None else 1
         receipt: dict[str, Any] = {}
