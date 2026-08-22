@@ -621,14 +621,21 @@ class A2AState:
             if before["target_fingerprints"].get(path) != after["target_fingerprints"].get(path)
         )
         new_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]) | set(target_changed_paths))
+        new_status_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]))
         worktree_changed = before["change_fingerprint"] != after["change_fingerprint"]
         cleanup_ok = not mcp_receipt.get("cleanup_error")
         mcp_ok = bool(mcp_receipt.get("accepted_by_transport")) and process.returncode == 0 and cleanup_ok
         team_complete = not team_mode or bool(mcp_receipt.get("team_complete"))
         verifier_requested = task["target_role"] == "verifier" or any(member["role"] == "verifier" for member in task.get("team", {}).get("members", []))
-        verifier_clean = not verifier_requested or not worktree_changed
+        verifier_clean = not verifier_requested or (
+            not target_changed_paths
+            and not new_status_paths
+            and before["head"] == after["head"]
+        )
         expected_change = task.get("expected_change")
-        change_ok = expected_change is None or (worktree_changed == expected_change)
+        scope_changed = bool(target_changed_paths)
+        scope_unchanged = not scope_changed and not new_status_paths and before["head"] == after["head"]
+        change_ok = expected_change is None or (scope_changed if expected_change else scope_unchanged)
         if not mcp_ok or not team_complete:
             status = "blocked" if is_native_capability_failure(mcp_receipt.get("protocol_error")) else "failed"
         elif not verifier_clean or not change_ok:
@@ -877,6 +884,7 @@ class A2AState:
             if before["target_fingerprints"].get(path) != after["target_fingerprints"].get(path)
         )
         new_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]) | set(target_changed_paths))
+        new_status_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]))
         worktree_changed = before["change_fingerprint"] != after["change_fingerprint"]
         run_ok = all(bool(receipt.get("accepted")) and returncode == 0 for _, receipt, returncode in receipts)
         verifier_receipt = next((receipt for role, receipt, _ in receipts if role == "verifier"), None)
@@ -886,7 +894,9 @@ class A2AState:
             and not verifier_receipt.get("branch_or_head_changed")
         )
         expected_change = task.get("expected_change")
-        change_ok = expected_change is None or worktree_changed == expected_change
+        scope_changed = bool(target_changed_paths)
+        scope_unchanged = not scope_changed and not new_status_paths and before["head"] == after["head"]
+        change_ok = expected_change is None or (scope_changed if expected_change else scope_unchanged)
         cli_ok = run_ok and verifier_clean and change_ok
         status = "done" if cli_ok else "failed"
 
