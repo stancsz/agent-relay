@@ -522,7 +522,11 @@ class A2AState:
             self.auto_cli_fallback
             and result.get("status") in {"blocked", "failed"}
             and is_native_capability_failure(native_error)
-            and receipt.get("worktree_changed") is False
+            # `worktree_changed` includes pre-existing user edits.  A native
+            # capability failure is safe to fall back only when this attempt
+            # changed no declared target path and did not move HEAD.
+            and not result.get("changed_paths")
+            and receipt.get("before_head") == receipt.get("after_head")
         )
         if not safe_to_retry:
             return result
