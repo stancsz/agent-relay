@@ -334,6 +334,53 @@ def test_native_capability_fallback() -> None:
         shutil.rmtree(workspace, ignore_errors=True)
 
 
+def test_cli_verifier_cannot_mutate_caller_workspace() -> None:
+    """A verifier's shell-side write must stay inside its disposable copy."""
+    workspace = Path(tempfile.mkdtemp(prefix="cli-verifier-isolation-"))
+    try:
+        target = workspace / "target.txt"
+        target.write_text("stable\n", encoding="utf-8")
+        git("init", "--quiet", cwd=workspace)
+        git("config", "user.email", "a2a@example.invalid", cwd=workspace)
+        git("config", "user.name", "a2a-test", cwd=workspace)
+        git("add", "target.txt", cwd=workspace)
+        git("commit", "--quiet", "-m", "init", cwd=workspace)
+
+        state = A2AState(Namespace(
+            workspace_root=str(workspace), auth_token="lan-secret",
+            worker_agent_type=None, verifier_agent_type=None,
+            timeout_seconds=None, state_dir=None,
+        ))
+        task = build_task(
+            task_id="cli-verifier-isolation",
+            target_role="verifier",
+            operation="verify",
+            target_paths=["target.txt"],
+            objective="Inspect the target without changing the caller workspace.",
+            acceptance_criteria=["The caller target remains stable."],
+            constraints=["Read-only verifier."],
+            inputs=[],
+            expected_change=False,
+        )
+        seen_workspaces: list[Path] = []
+
+        def fake_delegate(verifier_workspace: Path, *_args, **_kwargs):
+            seen_workspaces.append(verifier_workspace)
+            (verifier_workspace / "target.txt").write_text("mutated by verifier\n", encoding="utf-8")
+            return ({"accepted": True, "unexpected_worktree_change": True, "branch_or_head_changed": False}, 0)
+
+        state._run_cli_delegate_once = fake_delegate  # type: ignore[method-assign]
+        result = state._run_cli_fallback_locked(task, workspace)
+
+        assert result["status"] == "failed", result
+        assert result["server_receipt"]["verifier_clean"] is False, result
+        assert target.read_text(encoding="utf-8") == "stable\n"
+        assert seen_workspaces and seen_workspaces[0] != workspace
+        assert not seen_workspaces[0].exists()
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
 def test_client_disconnect_classification() -> None:
     assert is_client_disconnect(ConnectionAbortedError(10053, "connection aborted"))
     assert is_client_disconnect(BrokenPipeError())

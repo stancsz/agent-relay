@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import argparse
 import base64
+from contextlib import contextmanager
 import hashlib
 import hmac
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -176,6 +178,68 @@ def render_prompt(task: dict[str, Any], profile_context: dict[str, Any] | None =
         "",
         "Return a concise report of what you actually did, commands and exit codes, files changed, risks, and unmet criteria. Do not claim a check you did not run.",
     ])
+
+
+@contextmanager
+def isolated_cli_verifier_workspace(workspace: Path):
+    """Yield a disposable copy for a CLI verifier session.
+
+    Claude's ``Bash`` tool is intentionally available to verifiers so they can
+    run read-only evidence commands. The tool boundary is advisory, though: a
+    verifier can still invoke a script that writes files. Running that session
+    in the caller's dirty checkout would make a rejected verifier capable of
+    changing user work. The copy is initialized as a temporary Git repository
+    so the existing receipt/scope checks remain meaningful.
+    """
+    temp_root = Path(tempfile.mkdtemp(prefix="claude-a2a-verifier-"))
+    verifier_workspace = temp_root / "workspace"
+    try:
+        shutil.copytree(
+            workspace,
+            verifier_workspace,
+            ignore=shutil.ignore_patterns(
+                ".git",
+                ".env",
+                ".env.*",
+                "__pycache__",
+                ".pytest_cache",
+                ".mypy_cache",
+                ".ruff_cache",
+            ),
+        )
+        for args in (
+            ["init", "--quiet"],
+            ["config", "user.name", "Agent Relay"],
+            ["config", "user.email", "agent-relay@example.invalid"],
+            ["add", "-A"],
+            ["commit", "--quiet", "-m", "verifier baseline"],
+        ):
+            process = subprocess.run(
+                ["git", *args],
+                cwd=verifier_workspace,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                capture_output=True,
+            )
+            if process.returncode != 0:
+                detail = (process.stderr or process.stdout).strip()[:500]
+                raise RuntimeError(f"temporary verifier git setup failed: {detail}")
+        yield verifier_workspace
+    finally:
+        def remove_readonly(function, path, _exc_info):
+            try:
+                os.chmod(path, stat.S_IWRITE)
+                function(path)
+            except OSError:
+                pass
+
+        try:
+            shutil.rmtree(temp_root, onerror=remove_readonly)
+        except OSError:
+            # Cleanup is best effort; the verifier has already run outside
+            # the caller workspace, so a locked temporary artifact is safe.
+            pass
 
 
 class A2AState:
@@ -813,6 +877,7 @@ class A2AState:
         run_worker = bool(worker_members)
         run_verifier = task["target_role"] == "verifier" or verifier_member is not None
         receipts: list[tuple[str, dict[str, Any], int]] = []
+        verifier_isolated = False
 
         assigned_paths: set[str] = set()
         for index, worker_member in enumerate(worker_members):
@@ -866,19 +931,31 @@ class A2AState:
             if worker_receipts:
                 verifier_objective += "\n\nWorker receipts (inspect, do not trust blindly):\n" + json.dumps(worker_receipts, ensure_ascii=False)[:8000]
             verifier_task = {**task, "target_role": "verifier", "objective": verifier_objective}
-            receipt, returncode = self._run_cli_delegate_once(
-                workspace,
-                render_prompt(verifier_task, profile_context),
-                target_paths,
-                # Verifiers need shell-level read-only evidence commands
-                # (git/grep/head/sha256sum).  Edit/Write remain unavailable,
-                # and the post-run scope gate rejects any mutation.
-                allowed_tools="Read,Glob,Grep,Bash",
-                expected_change=False,
-                agent_type=self.verifier_agent_type,
-                cancel_event=cancel_event,
-                heartbeat=heartbeat,
-            )
+            try:
+                with isolated_cli_verifier_workspace(workspace) as verifier_workspace:
+                    verifier_isolated = True
+                    receipt, returncode = self._run_cli_delegate_once(
+                        verifier_workspace,
+                        render_prompt(verifier_task, profile_context),
+                        target_paths,
+                        # Verifiers need shell-level read-only evidence commands
+                        # (git/grep/head/sha256sum). Edit/Write remain
+                        # unavailable, and the post-run scope gate rejects any
+                        # mutation in the disposable verifier workspace.
+                        allowed_tools="Read,Glob,Grep,Bash",
+                        expected_change=False,
+                        agent_type=self.verifier_agent_type,
+                        cancel_event=cancel_event,
+                        heartbeat=heartbeat,
+                    )
+            except Exception as exc:
+                receipt = {
+                    "accepted": False,
+                    "unexpected_worktree_change": False,
+                    "branch_or_head_changed": False,
+                    "json_parse_error": f"verifier isolation failed: {exc}",
+                }
+                returncode = 1
             receipts.append(("verifier", receipt, returncode))
 
         after = git_snapshot(workspace, target_paths)
@@ -942,6 +1019,7 @@ class A2AState:
                 "stdout_parse_warning": next((receipt.get("stdout_parse_warning") for _, receipt, _ in receipts if receipt.get("stdout_parse_warning")), None),
                 "accepted_by_transport": run_ok,
                 "verifier_clean": verifier_clean,
+                "verifier_isolated": verifier_isolated,
                 "change_expectation_satisfied": change_ok,
                 "worktree_changed": worktree_changed,
                 "before_head": before["head"],
