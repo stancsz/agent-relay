@@ -437,13 +437,13 @@ This project is not:
 
 - goal_id: GL-agy-cli-delegation
 - goal_revision: 1
-- status: verifying
+- status: complete
 - roadmap_path: ROADMAP.md
 - roadmap_item_id: R-AGY-CLI-001
 - eval_path: EVAL.md
-- active_lease_until: 2026-08-22T03:03:20Z
-- last_checkpoint: CP-001
-- remaining_criteria: E-AGY-001
+- active_lease_until: null
+- last_checkpoint: CP-002
+- remaining_criteria: none
 
 ## Claude Dispatch Ledger
 
