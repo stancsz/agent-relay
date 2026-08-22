@@ -359,6 +359,7 @@ $claudeUsage = if ($null -ne $parsed) { $parsed.usage } else { $null }
 $claudeModelUsage = if ($null -ne $parsed) { $parsed.modelUsage } else { $null }
 $receiptStdout = Remove-JsonUnsafeControls -Value $stdout
 $receiptStderr = Remove-JsonUnsafeControls -Value $stderr
+$receiptStdoutB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$stdout))
 $accepted = (-not $timedOut) -and ($exitCode -eq 0) -and ($subtype -eq 'success') -and
     (-not [string]::IsNullOrWhiteSpace($stdout)) -and (-not $isError) -and
     ($permissionDenials.Count -eq 0) -and (-not $branchOrHeadChanged) -and
@@ -415,7 +416,11 @@ $result = [ordered]@{
     status_after = $after.status
     changed_paths_after = $after.changed_paths
     staged_paths_after = $after.staged_paths
-    stdout = $receiptStdout
+    # Keep the legacy field harmless and transport the authoritative nested
+    # Claude JSON as UTF-8 base64 so terminal control bytes cannot corrupt the
+    # PowerShell-generated receipt JSON.
+    stdout = $null
+    stdout_b64 = $receiptStdoutB64
     stderr = $receiptStderr
 }
 

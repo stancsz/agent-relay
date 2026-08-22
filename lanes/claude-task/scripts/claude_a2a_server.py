@@ -9,6 +9,7 @@ It is loopback-only by default. LAN binding requires an auth token.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import hmac
 import json
@@ -892,6 +893,11 @@ class A2AState:
         output_parts = []
         for role, receipt, _ in receipts:
             nested_stdout = receipt.get("stdout") if isinstance(receipt, dict) else None
+            if not nested_stdout and isinstance(receipt, dict) and receipt.get("stdout_b64"):
+                try:
+                    nested_stdout = base64.b64decode(receipt["stdout_b64"], validate=True).decode("utf-8", errors="replace")
+                except (ValueError, UnicodeError):
+                    nested_stdout = ""
             result_text = ""
             if isinstance(nested_stdout, str) and nested_stdout.strip():
                 try:
