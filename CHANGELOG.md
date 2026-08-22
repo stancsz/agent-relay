@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — 2026-08-21
+
+- Hardened the Windows CLI fallback for restrictive execution policies, direct
+  `claude.exe` resolution, JSON target-path forwarding, and minimal PowerShell
+  hosts without `Get-FileHash`.
+- Preserved disjoint team semantics in fallback mode by running every declared
+  worker with member-scoped target paths before the read-only verifier.
+- Relaxed verifier status checks to distinguish pre-existing dirty-worktree
+  entries from new changes introduced during verification.
+
 ## 0.1.0 — 2026-08-20
 
 - Renamed the project identity to **Agent Relay**.

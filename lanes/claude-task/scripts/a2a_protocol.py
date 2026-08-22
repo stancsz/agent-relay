@@ -133,11 +133,12 @@ def validate_task(packet: Any) -> dict[str, Any]:
         members = team["members"]
         if not isinstance(members, list) or not 1 <= len(members) <= MAX_TEAM_MEMBERS:
             raise ProtocolError(f"team.members must contain between 1 and {MAX_TEAM_MEMBERS} members")
+        member_workspace_paths = packet["workspace"].get("target_paths", []) if isinstance(packet.get("workspace"), dict) else []
         names: set[str] = set()
         for index, member in enumerate(members):
             if not isinstance(member, dict):
                 raise ProtocolError(f"team.members[{index}] must be an object")
-            _require_keys(member, {"name", "role", "objective"}, {"name", "role", "objective", "acceptance_criteria", "constraints"}, f"team.members[{index}]")
+            _require_keys(member, {"name", "role", "objective"}, {"name", "role", "objective", "acceptance_criteria", "constraints", "target_paths"}, f"team.members[{index}]")
             name = _text(member["name"], f"team.members[{index}].name", 32)
             if not MEMBER_NAME_RE.fullmatch(name) or name == "team-lead":
                 raise ProtocolError(f"team.members[{index}].name is invalid or reserved")
@@ -151,6 +152,15 @@ def validate_task(packet: Any) -> dict[str, Any]:
                 _bounded_string_list(member["acceptance_criteria"], f"team.members[{index}].acceptance_criteria", MAX_CRITERIA, MAX_TEXT_CHARS)
             if "constraints" in member:
                 _bounded_string_list(member["constraints"], f"team.members[{index}].constraints", MAX_CONSTRAINTS, MAX_TEXT_CHARS)
+            if "target_paths" in member:
+                member_paths = member["target_paths"]
+                if not isinstance(member_paths, list) or len(member_paths) > MAX_ITEMS:
+                    raise ProtocolError(f"team.members[{index}].target_paths must contain at most {MAX_ITEMS} paths")
+                workspace_paths = {str(path).replace("\\", "/") for path in member_workspace_paths}
+                for path_index, path in enumerate(member_paths):
+                    normalized_path = _relative_path(path, f"team.members[{index}].target_paths[{path_index}]")
+                    if normalized_path not in workspace_paths:
+                        raise ProtocolError(f"team.members[{index}].target_paths[{path_index}] must be listed in workspace.target_paths")
     elif "team" in packet:
         raise ProtocolError("team is only allowed for a team task")
     profile = packet.get("profile", "default")

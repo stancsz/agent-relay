@@ -11,6 +11,8 @@ param(
 
     [string[]]$TargetPath = @(),
 
+    [string]$TargetPathsJson,
+
     [switch]$ExpectChange,
 
     [switch]$ExpectNoChange,
@@ -30,7 +32,9 @@ param(
     [ValidateSet('Mcp', 'Cli')]
     [string]$Transport = 'Cli',
 
-    [string]$McpAgentType
+    [string]$McpAgentType,
+
+    [string]$CliAgentType
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,7 +67,16 @@ function Get-FileFingerprint {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         return 'missing'
     }
-    return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+    # Use the .NET API instead of the optional Get-FileHash cmdlet so this
+    # adapter works under minimal/no-profile PowerShell hosts as well.
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $stream = [IO.File]::OpenRead($path)
+    try {
+        return ([BitConverter]::ToString($algorithm.ComputeHash($stream)) -replace '-', '')
+    } finally {
+        $stream.Dispose()
+        $algorithm.Dispose()
+    }
 }
 
 function Get-RepoSnapshot {
@@ -107,9 +120,36 @@ if (-not (Test-Path -LiteralPath $WorkingDirectory -PathType Container)) {
 }
 
 $WorkingDirectory = (Resolve-Path -LiteralPath $WorkingDirectory).Path
-$null = & cmd.exe /d /c where claude.cmd 2>$null
-if ($LASTEXITCODE -ne 0) {
-    throw 'claude.cmd was not found on PATH. Fix the Claude CLI installation or PATH before delegating.'
+
+if (-not [string]::IsNullOrWhiteSpace($TargetPathsJson)) {
+    try {
+        $decodedTargetPaths = $TargetPathsJson | ConvertFrom-Json
+    } catch {
+        throw "TargetPathsJson must be valid JSON: $($_.Exception.Message)"
+    }
+    if ($decodedTargetPaths -isnot [System.Collections.IEnumerable] -or $decodedTargetPaths -is [string]) {
+        throw 'TargetPathsJson must contain a JSON array of repository-relative paths.'
+    }
+    $TargetPath = @($decodedTargetPaths | ForEach-Object {
+        if ($_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_)) {
+            throw 'TargetPathsJson entries must be non-empty strings.'
+        }
+        $_
+    })
+}
+
+$claudeCommand = $null
+if (-not [string]::IsNullOrWhiteSpace($env:CLAUDE_CLI_PATH) -and (Test-Path -LiteralPath $env:CLAUDE_CLI_PATH -PathType Leaf)) {
+    $claudeExecutable = (Resolve-Path -LiteralPath $env:CLAUDE_CLI_PATH).Path
+} else {
+    $claudeCommand = Get-Command claude.cmd -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -eq $claudeCommand) {
+        $claudeCommand = Get-Command claude.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    }
+    if ($null -eq $claudeCommand -or [string]::IsNullOrWhiteSpace($claudeCommand.Source)) {
+        throw 'Neither claude.cmd nor claude.exe was found on PATH. Fix the Claude CLI installation or PATH before delegating.'
+    }
+    $claudeExecutable = $claudeCommand.Source
 }
 
 if ($PSCmdlet.ParameterSetName -eq 'PromptFile') {
@@ -142,13 +182,22 @@ if ($Transport -eq 'Mcp') {
     if (-not [string]::IsNullOrWhiteSpace($Model) -or $null -ne $BudgetUsd) {
         throw 'MCP transport does not accept model or budget overrides. Omit -Model and -BudgetUsd.'
     }
-    $pythonPathOutput = & cmd.exe /d /c where py.exe 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        throw 'py.exe was not found on PATH. MCP transport uses the stdlib-only Python client.'
+    $pythonCommand = Get-Command py.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    $pythonArgs = @()
+    if ($null -eq $pythonCommand) {
+        $pythonCommand = Get-Command python.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -eq $pythonCommand) {
+            $pythonCommand = Get-Command python -ErrorAction SilentlyContinue | Select-Object -First 1
+        }
+    } else {
+        $pythonArgs += '-3'
     }
-    $pythonPath = (($pythonPathOutput -join "`n").Split("`n")[0]).Trim()
+    if ($null -eq $pythonCommand -or [string]::IsNullOrWhiteSpace($pythonCommand.Source)) {
+        throw 'Neither py.exe nor python.exe was found on PATH. MCP transport uses the stdlib-only Python client.'
+    }
+    $pythonPath = $pythonCommand.Source
     $mcpClient = Join-Path $PSScriptRoot 'claude_mcp_delegate.py'
-    $mcpArgs = @('-3', '-X', 'utf8', $mcpClient, '--working-directory', $WorkingDirectory)
+    $mcpArgs = @($pythonArgs + @('-X', 'utf8', $mcpClient, '--working-directory', $WorkingDirectory))
     if (-not [string]::IsNullOrWhiteSpace($McpAgentType)) { $mcpArgs += @('--agent-type', $McpAgentType) }
     if ($null -ne $TimeoutSeconds) {
         if ($TimeoutSeconds -le 0) { throw 'TimeoutSeconds must be greater than zero when supplied.' }
@@ -188,7 +237,8 @@ if ($Transport -eq 'Mcp') {
         try { $mcpReceipt = $stdout.Trim() | ConvertFrom-Json } catch { $mcpTransportError = $_.Exception.Message }
     }
 } else {
-    $claudeArgs = @('claude.cmd', '-p', '--no-session-persistence', '--output-format', 'json', '--allowed-tools', $AllowedTools)
+    $claudeArgs = @($claudeExecutable, '-p', '--no-session-persistence', '--output-format', 'json', '--allowed-tools', $AllowedTools)
+    if (-not [string]::IsNullOrWhiteSpace($CliAgentType)) { $claudeArgs += @('--agent', $CliAgentType) }
     if (-not [string]::IsNullOrWhiteSpace($Model)) { $claudeArgs += @('--model', $Model) }
     if ($null -ne $BudgetUsd) { $claudeArgs += @('--max-budget-usd', ([decimal]$BudgetUsd).ToString([Globalization.CultureInfo]::InvariantCulture)) }
     $psi = [Diagnostics.ProcessStartInfo]::new()
@@ -262,15 +312,23 @@ $requiredResponseSatisfied = if ([string]::IsNullOrWhiteSpace($RequiredResponseT
 $repoStatusUnchanged = $before.status -eq $after.status
 $allowedTargetPaths = @($TargetPath | ForEach-Object { $_.Replace('\', '/') })
 $unexpectedWorktreeChange = $false
+$beforeStatusLines = @($before.status -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+$beforeStatusSet = @{}
+foreach ($line in $beforeStatusLines) {
+    $beforeStatusSet[$line] = $true
+}
+$afterStatusLines = @($after.status -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 if ($ExpectNoChange) {
-    $unexpectedWorktreeChange = -not $repoStatusUnchanged
-} else {
-    $beforeStatusLines = @($before.status -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    $beforeStatusSet = @{}
-    foreach ($line in $beforeStatusLines) {
-        $beforeStatusSet[$line] = $true
+    # A verifier runs after bounded workers in an intentionally dirty
+    # repository. Allow status entries that already existed at its start, but
+    # reject any new entry introduced during the read-only verifier session.
+    foreach ($line in $afterStatusLines) {
+        if (-not $beforeStatusSet.ContainsKey($line)) {
+            $unexpectedWorktreeChange = $true
+            break
+        }
     }
-    $afterStatusLines = @($after.status -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+} else {
     foreach ($line in $afterStatusLines) {
         if ($beforeStatusSet.ContainsKey($line)) {
             continue

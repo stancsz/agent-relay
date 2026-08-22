@@ -680,6 +680,7 @@ class A2AState:
         *,
         allowed_tools: str,
         expected_change: bool | None,
+        agent_type: str | None = None,
         cancel_event: threading.Event | None = None,
         heartbeat: Any = None,
     ) -> tuple[dict[str, Any], int]:
@@ -690,15 +691,20 @@ class A2AState:
         prompt_path.write_text(prompt, encoding="utf-8")
         delegate = self.client_script.with_name("claude_delegate.ps1")
         command = [
-            "powershell.exe", "-NoProfile", "-File", str(delegate),
+            # The compatibility adapter is a bounded child process.  Bypass
+            # the host's restrictive script policy for this exact invocation
+            # rather than changing the user's or machine-wide policy.
+            "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(delegate),
             "-WorkingDirectory", str(workspace),
             "-PromptFile", str(prompt_path),
             "-Transport", "Cli",
             "-AllowedTools", allowed_tools,
             "-ResultPath", str(result_path),
         ]
+        if agent_type:
+            command.extend(["-CliAgentType", agent_type])
         if target_paths:
-            command.extend(["-TargetPath", *target_paths])
+            command.extend(["-TargetPathsJson", json.dumps(target_paths, ensure_ascii=False)])
         if expected_change is True:
             command.append("-ExpectChange")
         elif expected_change is False:
@@ -778,44 +784,75 @@ class A2AState:
     def _run_cli_fallback_locked(self, task: dict[str, Any], workspace: Path, *, cancel_event: threading.Event | None = None, heartbeat: Any = None) -> dict[str, Any]:
         """Run bounded CLI role(s) when native Agent Teams are unavailable.
 
-        A worker/verifier team is represented by two fresh CLI sessions in
-        sequence.  This keeps the verifier read-only and independent while
-        making the receipt explicit that no native team ran.
+        A worker/verifier team is represented by fresh CLI sessions in
+        sequence, one for every declared worker and then one read-only
+        verifier. This preserves disjoint worker scope even when native Agent
+        Teams cannot be spawned, while making the receipt explicit that no
+        native team ran.
         """
         before = git_snapshot(workspace, list(task["workspace"]["target_paths"]))
         profile_context = self.profile_context(task)
         target_paths = list(task["workspace"]["target_paths"])
         team_members = task.get("team", {}).get("members", []) if task["target_role"] == "team" else []
-        worker_member = next((member for member in team_members if member.get("role") == "worker"), None)
+        worker_members = [member for member in team_members if member.get("role") == "worker"]
         verifier_member = next((member for member in team_members if member.get("role") == "verifier"), None)
-        run_worker = task["target_role"] == "worker" or worker_member is not None
+        if task["target_role"] == "worker" and not worker_members:
+            worker_members = [{"name": "worker", "role": "worker", "objective": task["objective"]}]
+        run_worker = bool(worker_members)
         run_verifier = task["target_role"] == "verifier" or verifier_member is not None
         receipts: list[tuple[str, dict[str, Any], int]] = []
 
-        if run_worker:
+        assigned_paths: set[str] = set()
+        for index, worker_member in enumerate(worker_members):
             worker_objective = task["objective"]
-            if worker_member:
-                worker_objective += f"\n\nWorker member objective:\n{worker_member['objective']}"
-            worker_task = {**task, "target_role": "worker", "objective": worker_objective}
+            worker_objective += f"\n\nWorker member objective:\n{worker_member.get('objective', '')}"
+            explicit_paths = worker_member.get("target_paths")
+            if explicit_paths is None:
+                explicit_paths = worker_member.get("workspace", {}).get("target_paths")
+            if isinstance(explicit_paths, list):
+                worker_paths = [path for path in explicit_paths if path in target_paths]
+            else:
+                searchable = json.dumps(worker_member, ensure_ascii=False)
+                worker_paths = [
+                    path for path in target_paths
+                    if path in searchable or Path(path).name in searchable
+                ]
+            if not worker_paths:
+                remaining_paths = [path for path in target_paths if path not in assigned_paths]
+                worker_paths = remaining_paths[:1] if len(worker_members) > 1 and remaining_paths else target_paths
+            assigned_paths.update(worker_paths)
+            worker_workspace = {**task["workspace"], "target_paths": worker_paths}
+            worker_task = {
+                **task,
+                "workspace": worker_workspace,
+                "target_role": "worker",
+                "objective": worker_objective,
+            }
             receipt, returncode = self._run_cli_delegate_once(
                 workspace,
                 render_prompt(worker_task, profile_context),
-                target_paths,
+                worker_paths,
                 allowed_tools="Read,Edit,Write",
                 expected_change=task.get("expected_change"),
+                agent_type=self.worker_agent_type,
                 cancel_event=cancel_event,
                 heartbeat=heartbeat,
             )
-            receipts.append(("worker", receipt, returncode))
+            member_name = str(worker_member.get("name") or f"worker-{index + 1}")
+            receipts.append((f"worker:{member_name}", receipt, returncode))
 
-        worker_receipt = receipts[-1][1] if receipts and receipts[-1][0] == "worker" else None
-        worker_ok = bool(worker_receipt and worker_receipt.get("accepted") and receipts[-1][2] == 0)
+        worker_receipts = [receipt for role, receipt, _ in receipts if role.startswith("worker:")]
+        worker_ok = bool(worker_receipts) and all(
+            bool(receipt.get("accepted")) and returncode == 0
+            for (role, receipt, returncode) in receipts
+            if role.startswith("worker:")
+        )
         if run_verifier and (not run_worker or worker_ok):
             verifier_objective = task["objective"]
             if verifier_member:
-                verifier_objective += f"\n\nVerifier member objective:\n{verifier_member['objective']}"
-            if worker_receipt:
-                verifier_objective += "\n\nWorker receipt (inspect, do not trust blindly):\n" + json.dumps(worker_receipt, ensure_ascii=False)[:4000]
+                verifier_objective += f"\n\nVerifier member objective:\n{verifier_member.get('objective', '')}"
+            if worker_receipts:
+                verifier_objective += "\n\nWorker receipts (inspect, do not trust blindly):\n" + json.dumps(worker_receipts, ensure_ascii=False)[:8000]
             verifier_task = {**task, "target_role": "verifier", "objective": verifier_objective}
             receipt, returncode = self._run_cli_delegate_once(
                 workspace,
@@ -823,6 +860,7 @@ class A2AState:
                 target_paths,
                 allowed_tools="Read,Glob,Grep",
                 expected_change=False,
+                agent_type=self.verifier_agent_type,
                 cancel_event=cancel_event,
                 heartbeat=heartbeat,
             )
@@ -837,7 +875,11 @@ class A2AState:
         worktree_changed = before["change_fingerprint"] != after["change_fingerprint"]
         run_ok = all(bool(receipt.get("accepted")) and returncode == 0 for _, receipt, returncode in receipts)
         verifier_receipt = next((receipt for role, receipt, _ in receipts if role == "verifier"), None)
-        verifier_clean = not run_verifier or bool(verifier_receipt and verifier_receipt.get("repo_status_unchanged") and not verifier_receipt.get("unexpected_worktree_change"))
+        verifier_clean = not run_verifier or bool(
+            verifier_receipt
+            and not verifier_receipt.get("unexpected_worktree_change")
+            and not verifier_receipt.get("branch_or_head_changed")
+        )
         expected_change = task.get("expected_change")
         change_ok = expected_change is None or worktree_changed == expected_change
         cli_ok = run_ok and verifier_clean and change_ok
