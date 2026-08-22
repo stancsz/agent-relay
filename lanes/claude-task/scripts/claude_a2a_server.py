@@ -870,7 +870,10 @@ class A2AState:
                 workspace,
                 render_prompt(verifier_task, profile_context),
                 target_paths,
-                allowed_tools="Read,Glob,Grep",
+                # Verifiers need shell-level read-only evidence commands
+                # (git/grep/head/sha256sum).  Edit/Write remain unavailable,
+                # and the post-run scope gate rejects any mutation.
+                allowed_tools="Read,Glob,Grep,Bash",
                 expected_change=False,
                 agent_type=self.verifier_agent_type,
                 cancel_event=cancel_event,
