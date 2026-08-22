@@ -381,6 +381,61 @@ def test_cli_verifier_cannot_mutate_caller_workspace() -> None:
         shutil.rmtree(workspace, ignore_errors=True)
 
 
+def test_cli_delegate_timeout_does_not_wait_for_orphaned_pipes() -> None:
+    """A dead child with inherited pipes must produce a bounded timeout receipt."""
+    workspace = Path(tempfile.mkdtemp(prefix="cli-timeout-pipes-"))
+
+    class _Stream:
+        def close(self) -> None:
+            return None
+
+    class _HungProcess:
+        pid = 54321
+
+        def __init__(self) -> None:
+            self.stdout = _Stream()
+            self.stderr = _Stream()
+            self.killed = False
+
+        def poll(self):
+            return 1 if self.killed else None
+
+        @property
+        def returncode(self):
+            return 1 if self.killed else None
+
+        def kill(self) -> None:
+            self.killed = True
+
+        def communicate(self, timeout=None):
+            raise subprocess.TimeoutExpired(["fake-claude"], timeout)
+
+    real_popen = subprocess.Popen
+    real_run = subprocess.run
+    fake_process = _HungProcess()
+    subprocess.Popen = lambda *_args, **_kwargs: fake_process
+    subprocess.run = lambda *_args, **_kwargs: subprocess.CompletedProcess([], 0)
+    started = time.monotonic()
+    try:
+        state = A2AState(Namespace(
+            workspace_root=str(workspace), auth_token=None,
+            worker_agent_type=None, verifier_agent_type=None,
+            timeout_seconds=-100, state_dir=str(workspace / "state"),
+        ))
+        receipt, returncode = state._run_cli_delegate_once(
+            workspace, "Read the target and return a bounded result.", [],
+            allowed_tools="Read", expected_change=False,
+        )
+    finally:
+        subprocess.Popen = real_popen
+        subprocess.run = real_run
+        shutil.rmtree(workspace, ignore_errors=True)
+    assert time.monotonic() - started < 5, "timeout cleanup exceeded the bounded test window"
+    assert returncode == 1
+    assert receipt.get("timed_out") is True, receipt
+    assert receipt.get("accepted") is False, receipt
+
+
 def test_client_disconnect_classification() -> None:
     assert is_client_disconnect(ConnectionAbortedError(10053, "connection aborted"))
     assert is_client_disconnect(BrokenPipeError())
