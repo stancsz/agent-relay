@@ -181,7 +181,7 @@ def render_prompt(task: dict[str, Any], profile_context: dict[str, Any] | None =
 
 
 @contextmanager
-def isolated_cli_verifier_workspace(workspace: Path):
+def isolated_cli_verifier_workspace(workspace: Path, include_paths: list[str] | None = None):
     """Yield a disposable copy for a CLI verifier session.
 
     Claude's ``Bash`` tool is intentionally available to verifiers so they can
@@ -194,19 +194,30 @@ def isolated_cli_verifier_workspace(workspace: Path):
     temp_root = Path(tempfile.mkdtemp(prefix="claude-a2a-verifier-"))
     verifier_workspace = temp_root / "workspace"
     try:
-        shutil.copytree(
-            workspace,
-            verifier_workspace,
-            ignore=shutil.ignore_patterns(
-                ".git",
-                ".env",
-                ".env.*",
-                "__pycache__",
-                ".pytest_cache",
-                ".mypy_cache",
-                ".ruff_cache",
-            ),
-        )
+        if include_paths:
+            verifier_workspace.mkdir(parents=True, exist_ok=True)
+            for relative in dict.fromkeys(include_paths):
+                source = workspace / relative
+                destination = verifier_workspace / relative
+                if source.is_file():
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, destination)
+                elif source.is_dir():
+                    shutil.copytree(source, destination, dirs_exist_ok=True)
+        else:
+            shutil.copytree(
+                workspace,
+                verifier_workspace,
+                ignore=shutil.ignore_patterns(
+                    ".git",
+                    ".env",
+                    ".env.*",
+                    "__pycache__",
+                    ".pytest_cache",
+                    ".mypy_cache",
+                    ".ruff_cache",
+                ),
+            )
         for args in (
             ["init", "--quiet"],
             ["config", "user.name", "Agent Relay"],
@@ -978,8 +989,19 @@ class A2AState:
             if worker_receipts:
                 verifier_objective += "\n\nWorker receipts (inspect, do not trust blindly):\n" + json.dumps(worker_receipts, ensure_ascii=False)[:8000]
             verifier_task = {**task, "target_role": "verifier", "objective": verifier_objective}
+            verifier_include_paths = list(target_paths)
+            if task.get("target_role") == "verifier":
+                # Bounded verifier prompts name their exact source files. Copy
+                # only those paths instead of cloning a dirty novel checkout.
+                # Keep the full-copy fallback for older packets without a
+                # recognizable file list.
+                objective_paths = re.findall(
+                    r"(?<![A-Za-z0-9_./-])(?:seasons|docs|tools|engine)/[^\s,;`\"']+\.md",
+                    str(task.get("objective", "")),
+                )
+                verifier_include_paths.extend(objective_paths)
             try:
-                with isolated_cli_verifier_workspace(workspace) as verifier_workspace:
+                with isolated_cli_verifier_workspace(workspace, verifier_include_paths) as verifier_workspace:
                     verifier_isolated = True
                     receipt, returncode = self._run_cli_delegate_once(
                         verifier_workspace,
