@@ -200,7 +200,11 @@ def isolated_cli_verifier_workspace(
     try:
         if heartbeat:
             heartbeat()
-        if include_paths:
+        # ``[]`` is an explicit empty source set, not a request to clone the
+        # caller.  Direct/team verifier packets with no target or input paths
+        # otherwise fall through to the full dirty-worktree copy and can spend
+        # the entire bounded setup window staging unrelated user files.
+        if include_paths is not None:
             verifier_workspace.mkdir(parents=True, exist_ok=True)
             for relative in dict.fromkeys(include_paths):
                 source = workspace / relative
@@ -233,7 +237,7 @@ def isolated_cli_verifier_workspace(
             ["config", "user.name", "Agent Relay"],
             ["config", "user.email", "agent-relay@example.invalid"],
             ["add", "-A"],
-            ["commit", "--quiet", "-m", "verifier baseline"],
+            ["commit", "--quiet", "--allow-empty", "-m", "verifier baseline"],
         ):
             process = subprocess.run(
                 ["git", *args],

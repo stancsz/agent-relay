@@ -381,6 +381,18 @@ def test_cli_verifier_cannot_mutate_caller_workspace() -> None:
         shutil.rmtree(workspace, ignore_errors=True)
 
 
+def test_cli_verifier_empty_source_set_does_not_clone_dirty_workspace() -> None:
+    """An explicit empty verifier source set must stay an empty temp repo."""
+    workspace = Path(tempfile.mkdtemp(prefix="cli-verifier-empty-sources-"))
+    try:
+        (workspace / "unrelated-large-tree-marker.txt").write_text("caller-only\n", encoding="utf-8")
+        with isolated_cli_verifier_workspace(workspace, include_paths=[]) as verifier_workspace:
+            assert (verifier_workspace / ".git").is_dir()
+            assert not (verifier_workspace / "unrelated-large-tree-marker.txt").exists()
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
 def test_team_fallback_verifier_copies_objective_sources() -> None:
     """Team fallback verifiers receive the explicitly named source files."""
     workspace = Path(tempfile.mkdtemp(prefix="cli-team-verifier-sources-"))

@@ -12,6 +12,11 @@
 - Added the `CLAUDE_A2A_TIMEOUT_SECONDS` launcher override so long-running CLI
   fallback lanes can select a bounded per-process timeout without editing the
   launcher or relying on a hidden hard-coded value.
+- Fixed CLI verifier isolation for explicit empty source sets: create an empty
+  temporary Git baseline instead of cloning and staging the caller's entire
+  dirty worktree, and allow an empty baseline commit. This keeps no-input
+  read-only verifier and native-team fallback smoke tasks within their setup
+  bound.
 
 ## 0.1.0 — 2026-08-20
 
