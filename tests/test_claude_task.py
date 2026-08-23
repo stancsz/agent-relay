@@ -96,19 +96,20 @@ def test_claude_task_config_reads_remote_bridge_settings(monkeypatch) -> None:
 
 def test_claude_task_can_dispatch_to_existing_remote_bridge(tmp_path: Path, monkeypatch) -> None:
     captured = {}
+    (tmp_path / "value.py").write_text("VALUE = 1\n", encoding="utf-8")
 
     def fake_async(base, packet, *, timeout_seconds, cancel_event, auth_token=None):
         captured.update({"base": base, "packet": packet, "auth_token": auth_token})
         return {
             "status": "done",
             "output": "remote Claude completed the task",
-            "changed_paths": ["value.py"],
-            "patch": "diff --git a/value.py b/value.py\n",
+            "changed_paths": [],
+            "patch": "",
             "server_receipt": {"transport": "mcp", "accepted_by_transport": True},
         }
 
     monkeypatch.setattr(claude_task_module, "_run_async_bridge_job", fake_async)
-    task = _task()
+    task = replace(_task(), verification=())
     result = run_claude_task(
         task,
         tmp_path,
@@ -120,8 +121,10 @@ def test_claude_task_can_dispatch_to_existing_remote_bridge(tmp_path: Path, monk
     )
 
     assert result.status is ResultStatus.SUCCESS
-    assert result.patch.startswith("diff --git")
+    assert result.patch == ""
     assert result.metadata["transport"] == "remote-claude-a2a"
+    assert result.metadata["verification_authority"] == "parent-local-sandbox"
+    assert result.verification == ()
     assert captured["base"] == "https://pc-b.example.test:8787"
     assert captured["auth_token"] == "remote-secret"
     assert captured["packet"]["workspace"]["path"] == "repos/project"
@@ -136,6 +139,47 @@ def test_remote_claude_bridge_rejects_non_loopback_plain_http(tmp_path: Path) ->
 
     assert result.status is ResultStatus.WORKER_ERROR
     assert "limited to loopback" in result.summary
+
+
+def test_remote_claude_result_runs_parent_owned_verification_and_scope_gate(
+    tmp_path: Path, monkeypatch
+) -> None:
+    (tmp_path / "value.py").write_text("VALUE = 1\n", encoding="utf-8")
+    monkeypatch.setattr(
+        claude_task_module,
+        "_run_async_bridge_job",
+        lambda *_args, **_kwargs: {
+            "status": "done",
+            "output": "remote Claude returned a bounded patch",
+            "changed_paths": ["value.py"],
+            "patch": (
+                "diff --git a/value.py b/value.py\n"
+                "--- a/value.py\n"
+                "+++ b/value.py\n"
+                "@@ -1 +1 @@\n"
+                "-VALUE = 1\n"
+                "+VALUE = 2\n"
+            ),
+            "server_receipt": {"transport": "cli-fallback", "accepted_by_transport": True},
+        },
+    )
+
+    result = run_claude_task(
+        replace(_task(), task_id="remote-parent-verification"),
+        tmp_path,
+        config=ClaudeTaskConfig(
+            remote_url="https://pc-b.example.test:8787",
+            remote_auth_token="remote-secret",
+            remote_workspace_path=".",
+        ),
+    )
+
+    assert result.status is ResultStatus.SUCCESS
+    assert result.files_changed == ("value.py",)
+    assert result.verification and result.verification[0].passed
+    assert result.metadata["verification_authority"] == "parent-local-sandbox"
+    assert result.metadata["main_worktree_unchanged"] is True
+    assert (tmp_path / "value.py").read_text(encoding="utf-8") == "VALUE = 1\n"
 
 
 def test_claude_task_executes_through_a_real_remote_a2a_daemon(
@@ -176,7 +220,7 @@ def test_claude_task_executes_through_a_real_remote_a2a_daemon(
     thread.start()
     try:
         result = run_claude_task(
-            replace(_task(), task_id="real-remote-claude"),
+            replace(_task(), task_id="real-remote-claude", verification=()),
             repo,
             config=ClaudeTaskConfig(
                 remote_url=f"http://127.0.0.1:{server.server_port}",

@@ -12,6 +12,8 @@ from pathlib import Path
 
 ACTIVE = {"queued", "running", "verifying"}
 TERMINAL = {"blocked", "failed", "accepted", "rejected", "cancelled", "interrupted"}
+ORCHESTRATOR_ROLES = {"orchestrator", "claude-orchestrator"}
+WORKER_ROLES = {"subagent", "claude-worker", "claude-verifier"}
 UNRESOLVED_IDENTITY = {"", "-", "pending", "unknown", "unresolved", "none", "null"}
 MARKER_START = "<!-- goal-loop:managed:start -->"
 MARKER_END = "<!-- goal-loop:managed:end -->"
@@ -81,8 +83,8 @@ def validate(root: Path) -> dict[str, object]:
     if duplicates:
         issues.append(f"duplicate dispatch_id values: {', '.join(duplicates)}")
 
-    active_orchestrators = [row for row in dispatches if row.get("role") == "orchestrator" and row.get("status") in ACTIVE]
-    active_subagents = [row for row in dispatches if row.get("role") == "subagent" and row.get("status") in ACTIVE]
+    active_orchestrators = [row for row in dispatches if row.get("role") in ORCHESTRATOR_ROLES and row.get("status") in ACTIVE]
+    active_subagents = [row for row in dispatches if row.get("role") in WORKER_ROLES and row.get("status") in ACTIVE]
     if len(active_orchestrators) > 1:
         issues.append(f"active orchestrator count is {len(active_orchestrators)}; maximum is 1")
     if len(active_subagents) > 3:
@@ -105,6 +107,10 @@ def validate(root: Path) -> dict[str, object]:
             issues.append(f"active dispatches bound to the wrong roadmap_id: {', '.join(wrong_roadmap)}")
     active_rows = active_orchestrators + active_subagents
     for row in active_rows:
+        # A queued dispatch is recorded before the bridge returns its native
+        # identifiers. Require resolved identities once work is actually live.
+        if row.get("status") == "queued":
+            continue
         dispatch_id = row.get("dispatch_id", "<missing>")
         if row.get("instance_id", "").strip().lower() in UNRESOLVED_IDENTITY:
             issues.append(f"active dispatch {dispatch_id} has unresolved instance_id")

@@ -8,7 +8,7 @@ checkout implicitly.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import json
 import os
@@ -26,7 +26,14 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from .patch import capture_diff, changed_files, worktree_status
+from .patch import (
+    PatchError,
+    apply_patch,
+    capture_diff,
+    changed_files,
+    validate_patch_scope,
+    worktree_status,
+)
 from .result import DelegationResult, ResultStatus
 from .sandbox import GitSandbox, SandboxError
 from .task import DelegationTask, context_path_and_range, normalize_relative_path
@@ -35,6 +42,39 @@ from .verifier import run_verification
 
 class ClaudeTaskError(RuntimeError):
     """Raised when the bounded Claude task transport cannot start or finish."""
+
+
+def _restore_remote_targets_from_head(repo: Path, sandbox: Path, paths: tuple[str, ...]) -> bool:
+    """Use HEAD content for remote target files when the caller checkout is dirty.
+
+    A remote bridge commonly runs against the same dirty checkout as its parent,
+    so its patch is relative to ``HEAD`` while the parent sandbox copy already
+    contains those uncommitted edits. Rebuilding only the declared target files
+    from HEAD makes patch application and verification deterministic without
+    forwarding or mutating the caller worktree.
+    """
+
+    head = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "--verify", "HEAD"],
+        capture_output=True,
+        check=False,
+    )
+    if head.returncode != 0:
+        return False
+    for relative in paths:
+        normalized = normalize_relative_path(relative)
+        target = sandbox / Path(*normalized.split("/"))
+        show = subprocess.run(
+            ["git", "-C", str(repo), "show", f"HEAD:{normalized}"],
+            capture_output=True,
+            check=False,
+        )
+        if show.returncode == 0:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(show.stdout)
+        else:
+            target.unlink(missing_ok=True)
+    return True
 
 
 @dataclass(frozen=True)
@@ -546,7 +586,71 @@ def _run_remote_claude_task(
         cancel_event=cancel_event or threading.Event(),
         auth_token=config.remote_auth_token,
     )
-    return _remote_result(task, response, endpoint=endpoint, started=started)
+    result = _remote_result(task, response, endpoint=endpoint, started=started)
+    if result.status is not ResultStatus.SUCCESS:
+        return result
+
+    # A remote bridge owns the execution workspace, but it cannot be the
+    # parent-owned verification authority. Rehydrate only the returned patch
+    # into a disposable local sandbox, enforce scope, and run the declared
+    # deterministic checks before the Sol acceptance gate is considered.
+    try:
+        with GitSandbox(repo, f"{task.task_id}-remote-verification") as sandbox:
+            assert sandbox.path is not None
+            clean_target_baseline = _restore_remote_targets_from_head(
+                repo,
+                sandbox.path,
+                tuple(task.allowed_files),
+            )
+            if result.patch:
+                validate_patch_scope(result.patch, task.allowed_files)
+                apply_patch(sandbox.path, result.patch)
+            changed = changed_files(sandbox.path)
+            unexpected = sorted(set(changed) - set(task.allowed_files))
+            verification = run_verification(
+                task.verification,
+                sandbox.path,
+                timeout_seconds=config.verification_timeout_seconds,
+            )
+            sandbox.clean_verification_artifacts()
+            changed = changed_files(sandbox.path)
+            unexpected = sorted(set(changed) - set(task.allowed_files))
+            status = result.status
+            blockers = list(result.blockers)
+            if unexpected:
+                status = ResultStatus.SCOPE_VIOLATION
+                blockers.append(
+                    "Remote Claude changed files outside scope: "
+                    + ", ".join(unexpected)
+                )
+            elif any(not item.passed for item in verification):
+                status = ResultStatus.FAILED_VERIFICATION
+                blockers.append(
+                    "deterministic verification failed: "
+                    + "; ".join(item.command for item in verification if not item.passed)[:1000]
+                )
+            metadata = dict(result.metadata)
+            metadata["verification_authority"] = "parent-local-sandbox"
+            metadata["verification_scope"] = list(task.allowed_files)
+            metadata["verification_target_baseline"] = (
+                "head" if clean_target_baseline else "sandbox-copy"
+            )
+            return replace(
+                result,
+                status=status,
+                files_changed=changed,
+                patch=capture_diff(sandbox.path),
+                verification=verification,
+                blockers=tuple(dict.fromkeys(item for item in blockers if item)),
+                metadata=metadata,
+            )
+    except (PatchError, SandboxError, OSError) as exc:
+        return replace(
+            result,
+            status=ResultStatus.WORKER_ERROR,
+            summary="Remote Claude result could not pass parent-owned verification",
+            blockers=tuple(dict.fromkeys((*result.blockers, str(exc)[:1000]))),
+        )
 
 
 def run_claude_task(

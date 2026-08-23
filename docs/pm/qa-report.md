@@ -7,10 +7,11 @@ This report validates the feature described as:
 > An orchestrator submits bounded work to a worker on another machine, the worker lets its Claude/MCP runtime execute continuously, and the orchestrator can observe, recover, cancel, verify, and receive a durable result.
 
 The current checkout proves the coordinator/worker protocol and Claude bridge on
-one Windows host using real HTTP processes and deterministic fixtures. It also
-proves direct remote MCP transport to a reachable neighboring service, but does
-not claim the full physical two-PC Agent Relay coordinator/worker scenario; that
-final gate is documented in [`lan-acceptance.md`](lan-acceptance.md).
+one Windows host using real HTTP processes and deterministic fixtures. The
+coordinator/worker flight used the real `10.0.0.149` interface with bearer and
+scoped-agent authentication. It does not claim the full physical two-PC
+scenario; that separate gate remains documented in
+[`lan-acceptance.md`](lan-acceptance.md).
 
 ## Results
 
@@ -42,6 +43,28 @@ final gate is documented in [`lan-acceptance.md`](lan-acceptance.md).
 | `py -3 scripts/smoke_claude_interruption.py` | PASS | Separate worker process is killed after `running`; lease expiry, reassignment, fresh Claude execution, verification, and unchanged caller worktree are observed. |
 | `py -3 -B -m py_compile ...` | PASS | Claude bridge modules compile cleanly. |
 
+## 2026-08-23 real one-PC 10.x flight
+
+| Check | Result | Evidence and boundary |
+| --- | --- | --- |
+| Source coordinator on `10.0.0.149:8793` with bearer auth | PASS | The first flight used `PYTHONPATH=src` because the pre-existing PATH executable was stale; the editable install was refreshed afterward and `agent-relay --help` now exposes `serve`, `worker`, and `submit`. |
+| Scoped worker registration and claim over `http://10.0.0.149:8793` | PASS | `lan-worker-10x` registered with a scoped credential, claimed `lan-flight-task`, and renewed its lease over the real 10.x address. |
+| Durable terminal receipt and artifact | PASS | The first task stored a failed receipt plus a hash-checked patch artifact; failure reason was `deterministic verification evidence is missing`, so no false success was produced. |
+| Coordinator restart/reconnect/event replay | PASS | After restarting the coordinator on the same address and SQLite database, the terminal task, artifact reference, enrolled agent, and 11-event replay were readable. |
+| Parent-owned remote Claude verification fix | PASS | `tests/test_claude_task.py` passes; remote patches are scope-checked, applied in a disposable local sandbox, and verified before the Sol gate. Dirty target paths are restored from `HEAD` when possible. |
+| Claude team review for PM gap analysis | PASS (explicit fallback) | Real Claude worker plus isolated verifier completed with `transport: cli-fallback`; native Agent Team tools were not available in Claude Code 2.1.233. |
+| Corrected one-PC retry (`lan-flight-task-v4`) | FAIL-CLOSED | The coordinator completed authenticated claim/lease/renewal and persisted a terminal `WORKER_ERROR` when Claude returned `Server error mid-response`; the untrusted patch artifact was not accepted and neither parent verification nor Sol review ran. |
+
+The LAN task attempts also produced truthful failed receipts: the first had no
+verification command, a later run exposed a patch-base mismatch between a dirty
+caller checkout and a remote patch relative to `HEAD`, and the corrected retry
+encountered a Claude server error mid-response. The patch-base and parent
+verification defects are covered by adapter regression tests; the Claude API
+failure remains an explicit transport blocker. No remote Claude task from this
+flight may be described as a successful Sol-accepted edit: the first two failed
+before Sol was eligible, the stale patch was rejected, and the final retry
+failed closed before parent verification.
+
 ## What is now validated
 
 - The orchestrator can create one durable logical task and avoid duplicate submission.
@@ -65,6 +88,7 @@ final gate is documented in [`lan-acceptance.md`](lan-acceptance.md).
 ## What is not yet proven
 
 - A real PC-A to PC-B run across a physical LAN.
+- A physical two-PC interruption/recovery run across the LAN.
 - Real certificate/CA provisioning, firewall rules, and network interruption behavior.
 - A physical PC-A to PC-B Claude worker interruption, allowing lease expiry, restarting it, and proving safe reassignment over the LAN.
 - A native Claude Agent Team run in the current installed Claude version; the live probe reports `Agent` but not `TaskCreate`/`TaskUpdate`/native team tools, so the successful smoke is a bounded CLI fallback.
@@ -73,4 +97,10 @@ final gate is documented in [`lan-acceptance.md`](lan-acceptance.md).
 
 ## Release conclusion
 
-The single-job feature is implemented and locally/separately end-to-end validated, including execution through an existing remote Claude A2A daemon. It is not yet physically LAN-accepted. The correct release status is **LAN-ready candidate, external two-PC acceptance pending**, not “fully proven multi-PC production release.”
+The single-job feature is implemented and locally/separately end-to-end validated,
+including execution through an existing remote Claude A2A daemon. The one-PC
+10.x coordinator/worker flight is accepted for this goal, with the failure
+receipts and fixes above. Physical two-PC acceptance, certificate provisioning,
+and cross-machine interruption remain unclaimed. The correct release status is
+**one-PC LAN flight accepted; external two-PC acceptance pending**, not “fully
+proven multi-PC production release.”

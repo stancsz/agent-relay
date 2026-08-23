@@ -5,6 +5,16 @@ This runbook is the remaining release gate after
 protocol works across an actual network boundary and that a worker interruption
 does not become a false success.
 
+## Completed one-PC flight scope (2026-08-23)
+
+The requested one-PC substitute was exercised on the real Wi-Fi interface
+`10.0.0.149`, using source `serve` on `10.0.0.149:8793`, bearer-authenticated
+admin requests, and the scoped worker `lan-worker-10x`. Submission, claim,
+lease renewal, terminal receipt/artifact persistence, coordinator restart, and
+event replay were observed. This clears the one-PC development-flight scope
+for the current PM goal. It does not clear the physical PC-A/PC-B release gate
+below, nor TLS/CA/firewall provisioning.
+
 ## PC A — coordinator and client
 
 Use a long random value for both the coordinator bearer and the worker's

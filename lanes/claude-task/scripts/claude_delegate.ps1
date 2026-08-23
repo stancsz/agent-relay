@@ -34,7 +34,9 @@ param(
 
     [string]$McpAgentType,
 
-    [string]$CliAgentType
+    [string]$CliAgentType,
+
+    [string]$AgentsJson
 )
 
 $ErrorActionPreference = 'Stop'
@@ -281,6 +283,7 @@ if ($Transport -eq 'Mcp') {
     }
 } else {
     $claudeArgs = @($claudeExecutable, '-p', '--no-session-persistence', '--output-format', 'json', '--allowed-tools', $AllowedTools)
+    if (-not [string]::IsNullOrWhiteSpace($AgentsJson)) { $claudeArgs += @('--agents', $AgentsJson) }
     if (-not [string]::IsNullOrWhiteSpace($CliAgentType)) { $claudeArgs += @('--agent', $CliAgentType) }
     if (-not [string]::IsNullOrWhiteSpace($Model)) { $claudeArgs += @('--model', $Model) }
     if ($null -ne $BudgetUsd) { $claudeArgs += @('--max-budget-usd', ([decimal]$BudgetUsd).ToString([Globalization.CultureInfo]::InvariantCulture)) }

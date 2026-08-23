@@ -217,6 +217,7 @@ def build_cli_delegate_command(
     expected_change: bool | None,
     timeout_seconds: int | None,
     agent_type: str | None = None,
+    agents_json: str | None = None,
 ) -> list[str]:
     """Build a PowerShell fallback command without positional path leakage."""
 
@@ -230,14 +231,19 @@ def build_cli_delegate_command(
         "-AllowedTools", allowed_tools,
         "-ResultPath", str(result_path),
     ]
-    for target_path in target_paths:
-        command.extend(["-TargetPath", target_path])
+    if target_paths:
+        # Pass the complete list as one JSON scalar. Windows PowerShell's
+        # process argument binder can otherwise leak the second string[] value
+        # into the positional binder before the delegate starts.
+        command.extend(["-TargetPathsJson", json.dumps(target_paths, ensure_ascii=False)])
     if expected_change is True:
         command.append("-ExpectChange")
     elif expected_change is False:
         command.append("-ExpectNoChange")
     if agent_type:
         command.extend(["-CliAgentType", agent_type])
+    if agents_json:
+        command.extend(["-AgentsJson", agents_json])
     if timeout_seconds is not None:
         command.extend(["-TimeoutSeconds", str(timeout_seconds)])
     return command
@@ -879,6 +885,7 @@ class A2AState:
             expected_change=expected_change,
             timeout_seconds=self.timeout_seconds,
             agent_type=agent_type,
+            agents_json=self.agents_json,
         )
 
         process = subprocess.Popen(

@@ -44,7 +44,7 @@ def git(*args: str, cwd: Path) -> None:
         raise AssertionError(result.stderr)
 
 
-def test_cli_fallback_repeats_target_path_flags() -> None:
+def test_cli_fallback_groups_target_paths_for_powershell_array_binding() -> None:
     command = build_cli_delegate_command(
         delegate=Path("delegate.ps1"),
         workspace=Path("workspace"),
@@ -54,13 +54,14 @@ def test_cli_fallback_repeats_target_path_flags() -> None:
         target_paths=["README.md", "GOAL.md"],
         expected_change=False,
         timeout_seconds=30,
+        agents_json='{"claude-worker":{"description":"bounded worker"}}',
     )
 
-    assert command.count("-TargetPath") == 2
-    assert command[command.index("-TargetPath") + 1] == "README.md"
-    second = command.index("-TargetPath", command.index("-TargetPath") + 1)
-    assert command[second + 1] == "GOAL.md"
-    assert "README.md" not in command[second + 2 :]
+    assert command.count("-TargetPath") == 0
+    target_flag = command.index("-TargetPathsJson")
+    assert json.loads(command[target_flag + 1]) == ["README.md", "GOAL.md"]
+    agents_flag = command.index("-AgentsJson")
+    assert command[agents_flag + 1] == '{"claude-worker":{"description":"bounded worker"}}'
 
 
 def test_agent_type_default_omission() -> None:

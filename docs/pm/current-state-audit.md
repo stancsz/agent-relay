@@ -16,20 +16,24 @@ Agent Relay already has a differentiated bounded-delegation core:
 The cross-machine control-plane foundation now exists as a versioned HTTP/SQLite
 slice, including durable task state, worker discovery, scoped credentials,
 leases, reconnect/replay, artifact transfer, and truthful lifecycle receipts.
-The Claude adapter can also dispatch to an already-running authenticated remote
-Claude A2A daemon. It is not yet a release-proven two-PC product: physical LAN
-execution, identity provisioning, real adapter interruption/recovery, and
-side-effect-aware retry still need external acceptance evidence.
+The one-PC 10.x flight below exercises that plane through a real interface and
+the Claude adapter can dispatch to an already-running authenticated remote
+Claude A2A daemon. This is not a claim of physical two-PC acceptance: identity
+provisioning, real adapter interruption/recovery across machines, and
+side-effect-aware retry remain separate hardening work.
 
 ## Implementation coverage
 
-The feature inventory below contains 23 capability rows. Of those, 17 (74%)
-have an implemented source/test slice in this checkout, including capabilities
-whose local implementation is still conditional on an external service or
-whose operational hardening is incomplete. Four rows (17%) are partial and two
-rows (9%) are conditional-only. This is an unweighted engineering-coverage
-measure, not a product-readiness score: the MVP remains below its release gate
-until the physical two-PC LAN acceptance run is completed.
+The feature inventory below contains 23 capability rows. On the current tree,
+19/23 (83%) have an implemented source/test slice plus local fixture or flight
+evidence. The denominator is explicit and unweighted: one row counts once, and
+external entitlement or production deployment is not silently counted as
+proof. Two rows (identity/authentication and cancellation) remain partial, and
+two rows (Sol and Antigravity) remain conditional-only; those four are excluded
+from the 19-row numerator. Lane readiness and observability still have product
+hardening gaps, but their local source/test slices are present and therefore are
+included in the implementation-coverage numerator. This is not a product-
+readiness score, and the physical two-PC gate remains unclaimed.
 
 The most important gaps are tracked explicitly rather than hidden inside that
 percentage: physical PC-A/PC-B execution and interruption recovery, real LAN
@@ -39,6 +43,43 @@ dashboard/metrics/retention controls, finer-grained client roles, and
 production backup/deployment policy. Automatic result-driven multi-step
 orchestrator submission is also not implemented; the existing follow-up-chain
 APIs are durable local primitives, not proof of that end-to-end behavior.
+
+## 2026-08-23 one-PC 10.x flight findings
+
+- Coordinator source was launched on `10.0.0.149:8793` with an admin bearer;
+  worker `lan-worker-10x` registered with a scoped credential and communicated
+  over that address. Submission, claim, lease ownership, `running`, lease
+  renewal, terminal receipt, artifact upload, coordinator restart, and event
+  replay were observed from the persisted SQLite store.
+- The first remote Claude task returned a bounded PM patch but had no declared
+  deterministic verification. The acceptance gate correctly produced a failed
+  receipt with blocker `deterministic verification evidence is missing`; Sol
+  was not invoked because the earlier gate failed.
+- The next run exposed that remote Claude results were not being rehydrated into
+  a parent-owned verification sandbox. That is now fixed in
+  `src/agent_relay/claude_task.py`, with a regression test; the parent applies
+  only declared patch paths to a disposable sandbox and runs the declared
+  checks before Sol review.
+- A subsequent run exposed dirty-checkout patch-base drift: the remote patch
+  was relative to `HEAD` while the parent sandbox copied the caller's dirty
+  target. The verifier now restores only declared targets from `HEAD` when
+  available before applying the remote patch. A stale or non-applying patch
+  remains a truthful worker error.
+- A final retry (`lan-flight-task-v4`) exercised the corrected lifecycle but
+  Claude's fallback worker returned `Server error mid-response` after producing
+  an untrusted patch artifact. Agent Relay recorded `WORKER_ERROR`, did not run
+  parent verification or Sol acceptance, and did not accept the artifact. The
+  intermittent Claude bridge/API response failure remains an explicit
+  transport blocker rather than a success claim.
+- The first flight used the repository source explicitly via `PYTHONPATH=src`
+  because the pre-existing PATH executable was stale and lacked `serve`. The
+  editable package was then refreshed with `py -3 -m pip install --editable .`;
+  the installed command now exposes `serve`, `worker`, and `submit`. The stale
+  installation was a packaging/version skew found and corrected during the
+  flight.
+- Claude Code 2.1.233 exposed `Agent` but not native team task tools. The live
+  successful team review therefore used explicit `transport: cli-fallback`; it
+  must not be reported as a native Agent Team run.
 
 ## Feature inventory
 
@@ -69,17 +110,17 @@ path now invokes the same read-only gate automatically.
 | Claude worker acceptance gate | Implemented locally | [`src/agent_relay/acceptance.py`](../../src/agent_relay/acceptance.py), [`src/agent_relay/worker_plane.py`](../../src/agent_relay/worker_plane.py), [`src/agent_relay/store.py`](../../src/agent_relay/store.py) | `claude-task` is the default worker; deterministic verification and a passing `sol-reviewer` receipt are required before success is accepted. |
 | Sol reviewer lane | Conditional | [`src/agent_relay/codex_review.py`](../../src/agent_relay/codex_review.py), [`src/agent_relay/acceptance.py`](../../src/agent_relay/acceptance.py) | Read-only `gpt-5.6-sol` review; environment readiness must be deeper than executable presence. |
 | Antigravity lane | Conditional | [`src/agent_relay/agy_antigravity.py`](../../src/agent_relay/agy_antigravity.py) | Good specialist boundary; accept-edits needs stronger workspace/security policy. |
-| Lane registry/doctor | Partial | [`src/agent_relay/lanes.py`](../../src/agent_relay/lanes.py) | Readiness now distinguishes ready/degraded/blocked/unknown; Codex/AGY still need invocation/auth smoke. |
-| Remote A2A/MCP task API | Implemented locally/conditional LAN | [`src/agent_relay/control.py`](../../src/agent_relay/control.py), [`src/agent_relay/claude_task.py`](../../src/agent_relay/claude_task.py), [`src/agent_relay/claude_mcp.py`](../../src/agent_relay/claude_mcp.py), [`src/agent_relay/mcp.py`](../../src/agent_relay/mcp.py), and `serve`/`mcp`/lifecycle CLI | Versioned authenticated coordinator, direct remote Claude A2A dispatch, live existing-Claude-MCP dispatch, and an MCP façade work in local acceptance; physical Agent Relay two-PC proof remains. |
+| Lane registry/doctor | Implemented locally; readiness partial | [`src/agent_relay/lanes.py`](../../src/agent_relay/lanes.py) | Readiness distinguishes ready/degraded/blocked/unknown and has source/tests; Codex/AGY still need invocation/auth smoke. |
+| Remote A2A/MCP task API | Implemented locally/one-PC LAN | [`src/agent_relay/control.py`](../../src/agent_relay/control.py), [`src/agent_relay/claude_task.py`](../../src/agent_relay/claude_task.py), [`src/agent_relay/claude_mcp.py`](../../src/agent_relay/claude_mcp.py), [`src/agent_relay/mcp.py`](../../src/agent_relay/mcp.py), and `serve`/`mcp`/lifecycle CLI | Versioned authenticated coordinator, direct remote Claude A2A dispatch with parent-owned verification, live existing-Claude-MCP dispatch, and an MCP façade work in local acceptance; one-PC `10.0.0.149` evidence is recorded, physical two-PC proof remains unclaimed. |
 | Agent Cards/registry | Implemented locally | [`src/agent_relay/protocol.py`](../../src/agent_relay/protocol.py), SQLite registry, `/agents`, `/tasks/claim` | Registration, scoped worker identity, filtered discovery, heartbeats, rotation, revocation, server-side workspace-policy enforcement, and coordinator-owned priority/deadline claiming are covered. |
 | Durable job store | Implemented locally | [`src/agent_relay/store.py`](../../src/agent_relay/store.py) | SQLite WAL persistence and coordinator restart recovery are covered; deployment, backup, and retention policy remain. |
-| Leases/idempotency | Implemented locally/conditional LAN | SQLite lease table and [`scripts/acceptance_control_plane.py`](../../scripts/acceptance_control_plane.py) | Duplicate submit, expiry reassignment, stale-owner rejection, and restart reconnect pass in a separate coordinator process; physical multi-worker recovery remains. |
-| Artifact transfer/store | Implemented locally/partial operations | Hash-checked artifact endpoint, receipt refs, scoped parent-artifact grants, and acceptance artifact hash | Patch artifacts and terminal receipts survive restart; retention and larger artifact policy remain. |
+| Leases/idempotency | Implemented locally/one-PC LAN | SQLite lease table and [`scripts/acceptance_control_plane.py`](../../scripts/acceptance_control_plane.py) | Duplicate submit, 10.x lease ownership/renewal, stale-owner rejection, and restart reconnect pass; physical multi-worker recovery remains. |
+| Artifact transfer/store | Implemented locally/one-PC LAN; retention partial | Hash-checked artifact endpoint, receipt refs, scoped parent-artifact grants, and acceptance artifact hash | The flight stored a patch artifact and terminal receipt across restart; retention and larger artifact policy remain. |
 | Identity/authentication | Partial/conditional | Shared coordinator bearer plus enrolled/revocable worker credentials, actor binding, optional TLS, and [`scripts/acceptance_tls.py`](../../scripts/acceptance_tls.py) | HTTPS and worker-scoped authorization are implemented; certificate/CA provisioning and finer-grained client roles remain. |
 | Cancellation semantics | Partial | `cancel_requested`, Claude bridge cancellation, worker-confirmed `cancelled`/`blocked` receipts, bounded retryable bridge-failure recovery, and separate-process Claude interruption smoke | Local-Qwen stop support, physical two-PC interruption, and adapter resume cohorts remain. |
 | Progress/update transport | Implemented locally/partial adapters | JSON event replay plus bounded SSE `/events/stream` | Reconnect and missed-event replay are covered; client library and adapter interruption propagation remain. |
 | Durable follow-up chains | Implemented locally | `POST /chains/{chain_id}/steps`, `POST /chains/{chain_id}/reconcile`, `GET /chains/{chain_id}`, and `chain-submit` | Deferred steps auto-materialize on terminal completion, restart reconciliation is coordinator-owned, idempotency includes a request hash, and workers receive only hash-verified declared parent inputs; physical LAN evidence remains. |
-| Observability/audit UI | Partial | Durable event history, bounded receipts, CLI `watch`/`inspect`, MCP `inspect`/`watch` | Operator CLI and MCP surfaces exist; a richer dashboard, metrics, and retention controls remain. |
+| Observability/audit UI | Implemented locally; productization partial | Durable event history, bounded receipts, CLI `watch`/`inspect`, MCP `inspect`/`watch` | JSON/SSE replay and persisted event inspection were exercised; a richer dashboard, metrics, and retention controls remain. |
 
 ## Evidence-backed strengths
 
@@ -98,6 +139,11 @@ path now invokes the same read-only gate automatically.
   Claude A2A daemon, authenticates the durable job, polls it, and maps its
   receipt/patch. That proves the remote adapter wiring; it does not prove an
   actual second-PC network or production Claude quality.
+- A one-PC 10.0.0.149 LAN flight of the authenticated coordinator/worker HTTP
+  plane was observed on a single host. That run exercises the authenticated
+  coordinator/worker HTTP round-trip on one host only; physical two-PC
+  execution evidence is not claimed, and the documented two-PC gap above is
+  therefore unchanged.
 - A real Claude cancellation smoke now reaches `running`, records
   `cancel_requested`, and returns a worker-confirmed `cancelled` receipt with
   `execution_stopped: true`; a regression test preserves durable job-state
