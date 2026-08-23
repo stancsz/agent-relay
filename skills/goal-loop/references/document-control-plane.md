@@ -57,15 +57,15 @@ Increment `goal_revision` whenever Codex changes objective wording, acceptance c
 
 | dispatch_id | parent_id | role | instance_id | job_id | roadmap_id | scope | status | started_at | last_seen_at | checkpoint |
 |---|---|---|---|---|---|---|---|---|---|---|
-| GL-product-quality-O1 | codex | orchestrator | claude-instance-id | bridge-job-id | R-001 | coordinate R-001 | running | 2026-01-01T00:00:00Z | 2026-01-01T00:10:00Z | CP-001 |
-| GL-product-quality-S1 | GL-product-quality-O1 | subagent | claude-agent-id | team-task-id | R-001 | bounded implementation | running | 2026-01-01T00:02:00Z | 2026-01-01T00:09:00Z | CP-001 |
+| GL-product-quality-O1 | codex | claude-orchestrator | claude-instance-id | bridge-job-id | R-001 | coordinate R-001 | running | 2026-01-01T00:00:00Z | 2026-01-01T00:10:00Z | CP-001 |
+| GL-product-quality-S1 | GL-product-quality-O1 | claude-worker | claude-agent-id | team-task-id | R-001 | bounded implementation | running | 2026-01-01T00:02:00Z | 2026-01-01T00:09:00Z | CP-001 |
 <!-- goal-loop:managed:end -->
 ```
 
 Use identifiers from the actual bridge receipt:
 
 - Orchestrator: bridge `job_id` plus the native `team_name` or session identifier as `instance_id`.
-- Subagent: `teammate_id` or `agent_id` from the spawn receipt as `instance_id`, plus its native task ID as `job_id`.
+- Worker: `teammate_id` or `agent_id` from the spawn receipt as `instance_id`, plus its native task ID as `job_id`.
 - If the runtime omits an identifier, record `unresolved` and stop further dispatch until Codex reconciles the native team/task artifacts. Never substitute a friendly member name as proof of identity.
 
 Allowed dispatch statuses: `queued`, `running`, `verifying`, `waiting_user`, `blocked`, `failed`, `accepted`, `rejected`, `cancelled`, `interrupted`.
@@ -101,7 +101,7 @@ Every terminal dispatch row in `GOAL.md` must have a corresponding dispatch-eval
 1. Read all three documents and current Git/runtime state.
 2. Validate the managed sections and reconcile dispatch IDs, native team/agent IDs, and task IDs with bridge jobs/team receipts.
 3. Choose one ready roadmap item and update `GOAL.md` before dispatch.
-4. Dispatch one Claude orchestrator with default three and maximum three active subagents.
+4. Dispatch one `claude-orchestrator` with up to three active `claude-worker` assignments.
 5. Record returned identities immediately in `GOAL.md`.
 6. On each check-in, update liveness and checkpoints without creating duplicate work.
 7. On terminal work, independently inspect scope, diff, tests, runtime, and logs.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import replace
 from threading import Thread
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -307,6 +308,17 @@ def test_mcp_local_worker_mode_completes_a_run_through_the_durable_plane(monkeyp
         )
 
     monkeypatch.setattr(worker_plane, "execute_task", fake_execute)
+    def fake_acceptance(_task, _repo, result, **_kwargs):
+        metadata = dict(result.metadata)
+        metadata["sol_review"] = {
+            "lane": "sol-reviewer",
+            "status": "PASS",
+            "runtime": {"model": "gpt-5.6-sol", "read_only": True},
+        }
+        metadata["acceptance_gates"] = ["deterministic-verification", "sol-reviewer"]
+        return replace(result, metadata=metadata)
+
+    monkeypatch.setattr(worker_plane, "enforce_acceptance", fake_acceptance)
 
     def bounded_worker(config):
         deadline = time.monotonic() + 5

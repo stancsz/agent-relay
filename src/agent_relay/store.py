@@ -1205,6 +1205,7 @@ class RelayStore:
             self._check_lease(connection, envelope, lease_id=lease_id, actor=actor)
             if receipt is not None:
                 self._validate_receipt_artifacts(connection, task_id, receipt)
+                self._validate_worker_acceptance(target, receipt)
             updated = envelope.transition(
                 target,
                 actor=actor,
@@ -1224,6 +1225,33 @@ class RelayStore:
                     predecessor_task_id=task_id,
                 )
             return updated
+
+    @staticmethod
+    def _validate_worker_acceptance(
+        target: JobState | str,
+        receipt: JobReceipt,
+    ) -> None:
+        """Keep the coordinator from accepting an unreviewed Claude result."""
+
+        try:
+            target_state = target if isinstance(target, JobState) else JobState(target)
+        except ValueError:
+            return
+        if target_state is not JobState.SUCCEEDED:
+            return
+        evidence = receipt.evidence
+        if not isinstance(evidence, Mapping) or evidence.get("lane") != "claude-task":
+            return
+        verification = receipt.verification
+        if not verification or any(item.get("passed") is not True for item in verification):
+            raise StoreError(
+                "Claude worker success requires passing deterministic verification evidence"
+            )
+        sol_review = evidence.get("sol_review")
+        if not isinstance(sol_review, Mapping) or sol_review.get("status") != "PASS":
+            raise StoreError(
+                "Claude worker success requires a passing sol-reviewer receipt"
+            )
 
     @staticmethod
     def _validate_receipt_artifacts(

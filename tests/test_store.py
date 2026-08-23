@@ -13,6 +13,7 @@ from agent_relay.store import (
     LeaseConflict,
     LeaseNotFound,
     RelayStore,
+    StoreError,
 )
 from agent_relay.task import DelegationTask
 
@@ -114,6 +115,64 @@ def test_leases_require_ownership_and_are_renewable(tmp_path) -> None:
             lease_id=first_lease.lease_id,
             reason="stale worker",
         )
+
+
+def test_claude_success_requires_deterministic_and_sol_review_receipts(tmp_path) -> None:
+    store = RelayStore(tmp_path / "relay.sqlite3")
+    store.create_or_get(JobEnvelope.new(task("claude-acceptance")))
+    accepted, lease = store.acquire_lease(
+        "claude-acceptance",
+        worker_id="worker-a",
+        ttl_seconds=30,
+    )
+    store.transition(
+        "claude-acceptance",
+        JobState.RUNNING,
+        actor="worker-a",
+        lease_id=lease.lease_id,
+        reason="started",
+    )
+    missing_review = JobReceipt(
+        receipt_id="receipt-missing-sol-review",
+        task_id="claude-acceptance",
+        final_state=JobState.SUCCEEDED,
+        actor="worker-a",
+        completed_at="2026-08-23T00:00:00Z",
+        evidence={"lane": "claude-task"},
+        verification=({"command": "pytest -q", "passed": True},),
+    )
+    with pytest.raises(StoreError, match="sol-reviewer"):
+        store.transition(
+            "claude-acceptance",
+            JobState.SUCCEEDED,
+            actor="worker-a",
+            lease_id=lease.lease_id,
+            reason="worker returned terminal result",
+            receipt=missing_review,
+        )
+
+    accepted_receipt = JobReceipt(
+        receipt_id="receipt-with-sol-review",
+        task_id="claude-acceptance",
+        final_state=JobState.SUCCEEDED,
+        actor="worker-a",
+        completed_at="2026-08-23T00:00:00Z",
+        evidence={
+            "lane": "claude-task",
+            "sol_review": {"lane": "sol-reviewer", "status": "PASS"},
+        },
+        verification=({"command": "pytest -q", "passed": True},),
+    )
+    succeeded = store.transition(
+        "claude-acceptance",
+        JobState.SUCCEEDED,
+        actor="worker-a",
+        lease_id=lease.lease_id,
+        reason="worker returned terminal result",
+        evidence=dict(accepted_receipt.evidence),
+        receipt=accepted_receipt,
+    )
+    assert succeeded.state is JobState.SUCCEEDED
 
 
 def test_released_running_task_is_claimable_by_another_worker(tmp_path) -> None:

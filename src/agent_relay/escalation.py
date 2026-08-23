@@ -280,7 +280,7 @@ DEFAULT_POLICY: dict[str, Any] = {
             "role": "planner",
         },
         "high_verifier": {
-            "lane": "codex-review",
+            "lane": "sol-reviewer",
             "model": "gpt-5.6-sol",
             "reasoning_effort": "high",
             "role": "verifier",

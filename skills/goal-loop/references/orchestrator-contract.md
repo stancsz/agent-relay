@@ -31,25 +31,26 @@ max_teammates: 3
 
 ## Lead prompt requirements
 
-The Claude lead prompt must state:
+The `claude-orchestrator` prompt must state:
 
 - You are the sole orchestrator for this `goal_id`.
-- You may coordinate at most three concurrently active Claude teammates.
-- Teammates may not create teams or recursively invoke the goal loop.
+- You may coordinate at most three concurrently active `claude-worker` assignments.
+- Workers may not create teams or recursively invoke the goal loop.
 - Decompose the next bounded execution wave and assign explicit, non-overlapping ownership.
 - Inspect actual repository and runtime evidence before deciding what to do.
 - Do not infer authority for consequential side effects.
 - Do not claim success from teammate self-reports; inspect their artifacts and verification.
+- Route final acceptance, UI implementation, visual judgment, and ship decisions to the parent Codex Desktop session.
 - Before ending the wave, return the checkpoint schema below.
 - Treat the supplied control-file excerpts as a versioned contract. Propose updates in the checkpoint; do not directly edit Codex-managed control sections.
 
-Choose teammate objectives from the actual work. A useful default allocation is:
+Choose worker objectives from the actual work. A useful default allocation is:
 
-1. `worker-a`: highest-value bounded implementation slice.
-2. `worker-b`: independent second slice, tests, or investigation with a disjoint write scope.
-3. `verifier`: read-only review of the integrated result and evidence.
+1. `claude-worker-a`: highest-value bounded implementation slice.
+2. `claude-worker-b`: independent second slice, tests, or investigation with a disjoint write scope.
+3. `claude-verifier`: read-only review of the integrated result and evidence inside the Claude wave.
 
-Do not force this allocation when the goal is documentation-only, research-only, sequential, or too coupled for safe parallelism.
+Do not force this allocation when the goal is documentation-only, research-only, sequential, or too coupled for safe parallelism. After the Claude wave, the parent Codex invokes `sol-reviewer` as the independent acceptance gate.
 
 ## Checkpoint schema
 
@@ -91,7 +92,7 @@ worktree, and receipt; and reconcile every active dispatch ID. Do not launch ano
 Claude run while a fresh lease is active. If the prior wave is terminal, independently
 review its evidence, update evaluation then goal then roadmap, and either mark the goal
 complete, preserve a waiting/blocked state, or submit one bounded continuation under
-the same goal with no more than three Claude teammates. Report only meaningful state
+the same goal with no more than three Claude workers. Report only meaningful state
 changes or failures.
 ```
 

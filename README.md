@@ -20,9 +20,9 @@ should use the `agent-relay` CLI and the canonical lane names:
 | Lane | Role | Default | Proof boundary |
 | --- | --- | --- | --- |
 | `local-qwen` | local/free mechanical worker | Qwen3.5:4B through Ollama and Codex CLI | disposable sandbox, scope gate, parent reruns checks |
-| `claude-task` | primary Claude implementation/team worker | authenticated Claude task bridge; optional Agent Teams | disposable Agent Relay sandbox, task receipt, workspace lock, Git fingerprint |
+| `claude-task` | Claude implementation worker | authenticated Claude Orchestrator; optional Agent Teams | disposable Agent Relay sandbox, task receipt, workspace lock, Git fingerprint |
 | `claude-mcp` | remote Claude MCP convenience worker | existing streamable-HTTP Claude MCP server (JSON or SSE) | remote output/transport receipt; no local sandbox claim |
-| `codex-review` | subscription QA verifier | GPT-5.6 Luna, high reasoning | read-only Codex CLI review receipt |
+| `sol-reviewer` | Sol high independent read-only reviewer | GPT-5.6 Sol, high reasoning | read-only Codex CLI review receipt |
 | `agy-antigravity` | Google-stack scout/planner | Gemini 3.1 Pro, high effort | plan receipt; parent verifies locally |
 
 List configured lanes with `agent-relay lanes --json`. Check local executables,
@@ -32,14 +32,15 @@ Ollama health, and Claude's ephemeral bridge prerequisites with
 probed. Read readiness as `ready`, `degraded`, `blocked`, or `unknown`; an
 executable-only check is `unknown`, not proof of entitlement. Run the
 subscription verifier with
-`agent-relay review --repo . --model gpt-5.6-luna --reasoning-effort high --uncommitted`.
+`agent-relay review --repo . --model gpt-5.6-sol --reasoning-effort high --uncommitted`.
 That command uses the user's existing Codex CLI login; it does not accept an
 API key and it fails explicitly when the model or entitlement is unavailable.
 
 The Claude implementation is vendored under
-[`lanes/claude-task/`](lanes/claude-task/) from the former Claude Prime project.
-Its native-team and authenticated A2A behavior remains intact; the unified
-skill is [`skills/agent-relay/SKILL.md`](skills/agent-relay/SKILL.md).
+[`lanes/claude-task/`](lanes/claude-task/) as the `claude-task` backend. Its
+native-team and authenticated A2A behavior remains intact; the unified skill is
+[`skills/agent-relay/SKILL.md`](skills/agent-relay/SKILL.md), and the dedicated
+orchestration skill is `claude-orchestrator`.
 
 The evidence-backed routing and the latest local readiness results are recorded
 in [`docs/SUBAGENT_ROLES.md`](docs/SUBAGENT_ROLES.md).
@@ -420,7 +421,7 @@ security boundary.
 The implemented command surfaces are:
 
 ~~~text
-agent-relay lanes    List the canonical local-qwen, claude-task, claude-mcp, codex-review, agy-antigravity lanes
+agent-relay lanes    List the canonical local-qwen, claude-task, claude-mcp, sol-reviewer, agy-antigravity lanes
 agent-relay serve    Run the durable SQLite-backed coordinator
 agent-relay mcp      Expose the durable coordinator through MCP tools
 agent-relay agents   List or register worker Agent Cards
@@ -439,7 +440,7 @@ agent-relay consult  Summon the configured high Codex profile when required
 agent-relay ask      Consult the AGY Google-stack specialist in plan mode
 agent-relay doctor   Check Ollama, the exact model, and optional Codex smoke.
 agent-relay triage   Decide DELEGATE, KEEP_LOCAL, or BLOCKED.
-agent-relay delegate Run one bounded task through Ollama, codex-ollama, or claude-task.
+agent-relay delegate Run one bounded task through Claude/claude-task by default; alternatives are explicit.
 agent-relay eval     Run a declared suite and produce quality/evidence metrics.
 agent-relay baseline Run the matched direct-Codex comparison lane.
 agent-relay batch    Run independent tasks and return one compact handoff.
@@ -698,15 +699,10 @@ saved.
 
 ## Codex CLI subagents and review
 
-This repository includes project-scoped custom agents under `.codex/agents/`.
-`sol_high` is the implementation subagent: it uses the exact model slug
-`gpt-5.6-sol` with `model_reasoning_effort = "high"` and may write only within
-the parent task's normal workspace permissions. `reviewer` uses `gpt-5.6-luna`
-with the same high-reasoning settings and is read-only. Its output is
-intentionally concise,
-while its instructions require an independent diff review and focused
-verification so it can catch issues a faster `gpt-5.6-luna` implementation may
-miss.
+The standard implementation worker is Claude through the `claude-task` backend.
+Sol high is the independent read-only acceptance reviewer. The parent Codex
+Desktop session remains responsible for final integration, UI work, and ship
+decisions.
 
 For a direct non-interactive implementation run, use `codex exec` with explicit
 model and sandbox settings:
@@ -721,9 +717,10 @@ Project custom agents are selected when the parent Codex session spawns a
 subagent. Start an interactive session in this repository and request:
 
 ~~~text
-Use sol_high to implement this bounded task. After it finishes, use reviewer
-to inspect the complete diff, run focused verification, and return only concise
-actionable findings. Do not let the reviewer edit files.
+Use Claude/claude-task to implement this bounded task. After it finishes, use
+sol-reviewer to inspect the candidate and deterministic verification evidence,
+then have the parent Codex Desktop session make the final acceptance decision.
+Do not let sol-reviewer edit files.
 ~~~
 
 For a standalone CLI review of all staged, unstaged, and untracked changes:

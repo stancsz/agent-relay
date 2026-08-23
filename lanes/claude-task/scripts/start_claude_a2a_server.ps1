@@ -22,7 +22,7 @@ param(
 
     [switch]$NoCliFallback,
 
-    [string]$StateDir = $(if ($env:CLAUDE_TEAM_BRIDGE_STATE_DIR) { $env:CLAUDE_TEAM_BRIDGE_STATE_DIR } else { Join-Path $env:USERPROFILE '.claude-team-bridge' }),
+    [string]$StateDir = $(if ($env:CLAUDE_ORCHESTRATOR_STATE_DIR) { $env:CLAUDE_ORCHESTRATOR_STATE_DIR } elseif ($env:CLAUDE_TEAM_BRIDGE_STATE_DIR) { $env:CLAUDE_TEAM_BRIDGE_STATE_DIR } else { Join-Path $env:USERPROFILE '.claude-orchestrator' }),
 
     [Nullable[int]]$TimeoutSeconds
 )

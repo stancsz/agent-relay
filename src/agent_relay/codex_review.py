@@ -20,7 +20,7 @@ from typing import Any, Mapping
 from .env import load_dotenv
 
 
-DEFAULT_REVIEW_MODEL = "gpt-5.6-luna"
+DEFAULT_REVIEW_MODEL = "gpt-5.6-sol"
 DEFAULT_REASONING_EFFORT = "high"
 
 
@@ -87,7 +87,7 @@ class CodexReviewResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "lane": "codex-review",
+            "lane": "sol-reviewer",
             "status": self.status,
             "summary": self.summary,
             "findings": self.findings,

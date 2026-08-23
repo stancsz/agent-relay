@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 from .codex_worker import CodexCliConfig, CodexCliError, CodexCliWorker
 from .codex_review import CodexReviewConfig, run_codex_review
+from .acceptance import enforce_acceptance
 from .agy_antigravity import AgyConfig, run_agy
 from .claude_task import run_claude_task
 from .claude_mcp import run_claude_mcp_task
@@ -79,13 +80,13 @@ def _parser() -> argparse.ArgumentParser:
         help="probe every registered lane and return truthful readiness states",
     )
 
-    delegate = subparsers.add_parser("delegate", help="run one bounded task")
+    delegate = subparsers.add_parser("delegate", help="run one bounded task through Claude by default")
     delegate.add_argument("--task", required=True, type=Path)
     delegate.add_argument("--repo", type=Path, default=Path.cwd())
     delegate.add_argument(
         "--backend",
         choices=("ollama", "codex-ollama", "local-qwen", "claude-task", "claude-mcp"),
-        default="ollama",
+        default="claude-task",
     )
     delegate.add_argument("--model")
     delegate.add_argument("--json", action="store_true", dest="as_json")
@@ -256,13 +257,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     chain_submit.add_argument("--json", action="store_true", dest="as_json")
 
-    worker = subparsers.add_parser("worker", help="run a bounded coordinator worker")
+    worker = subparsers.add_parser("worker", help="run the default Claude coordinator worker")
     worker.add_argument("--url", default="http://127.0.0.1:8788")
     worker.add_argument("--token", default=default_auth_token())
     worker.add_argument("--agent-token", default=default_agent_token(), help="scoped credential for this worker")
     worker.add_argument("--worker-id", default="agent-relay-worker")
     worker.add_argument("--repo", type=Path, default=Path.cwd())
-    worker.add_argument("--backend", choices=("local-qwen", "claude-task", "claude-mcp"), default="local-qwen")
+    worker.add_argument("--backend", choices=("local-qwen", "claude-task", "claude-mcp"), default="claude-task")
     worker.add_argument("--model")
     worker.add_argument("--lease-seconds", type=float, default=300.0)
     worker.add_argument("--poll-seconds", type=float, default=2.0)
@@ -286,7 +287,7 @@ def _parser() -> argparse.ArgumentParser:
 
     review = subparsers.add_parser(
         "review",
-        help="run the read-only Codex subscription QA verifier",
+        help="run the read-only Sol high acceptance reviewer",
     )
     review.add_argument("--repo", type=Path, default=Path.cwd())
     review.add_argument("--base")
@@ -773,6 +774,12 @@ def _delegate(args: argparse.Namespace) -> int:
         result = run_claude_mcp_task(task)
     else:
         result = delegate_local(task=task, repo=args.repo, model=args.model)
+    result = enforce_acceptance(
+        task,
+        args.repo,
+        result,
+        require_sol_review=True,
+    )
     patch_artifact = None
     if args.patch_out is not None:
         args.patch_out.parent.mkdir(parents=True, exist_ok=True)
@@ -1129,7 +1136,7 @@ def _review(args: argparse.Namespace) -> int:
         return 0 if result.passed else 2
     except (FileNotFoundError, OSError, ValueError) as exc:
         print(json.dumps({
-            "lane": "codex-review",
+            "lane": "sol-reviewer",
             "status": "FAILED",
             "summary": str(exc),
             "runtime": {"read_only": True},

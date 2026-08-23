@@ -43,6 +43,14 @@ def test_delegate_parser_exposes_sandboxed_claude_lane() -> None:
     assert args.backend == "claude-task"
 
 
+def test_delegate_and_worker_default_to_claude_task() -> None:
+    parser = cli._parser()
+    delegate = parser.parse_args(["delegate", "--task", "task.json"])
+    worker = parser.parse_args(["worker"])
+    assert delegate.backend == "claude-task"
+    assert worker.backend == "claude-task"
+
+
 def test_escalation_parser_exposes_plan_and_review_end_gates() -> None:
     parser = cli._parser()
 
@@ -185,7 +193,7 @@ def test_failed_sol_review_returns_bounded_revise_then_human_review(
         "version": 1,
         "enabled": True,
         "default_action": "continue",
-        "profiles": {"v": {"lane": "codex-review", "model": "sol", "role": "verifier"}},
+        "profiles": {"v": {"lane": "sol-reviewer", "model": "sol", "role": "verifier"}},
         "rules": [{
             "id": "review",
             "priority": 1,
@@ -311,6 +319,7 @@ def test_delegate_uses_claude_lane_adapter(monkeypatch, tmp_path: Path, capsys) 
         return expected
 
     monkeypatch.setattr(cli, "run_claude_task", fake_run)
+    monkeypatch.setattr(cli, "enforce_acceptance", lambda *_args, **_kwargs: expected)
     args = cli._parser().parse_args(
         [
             "delegate",
@@ -441,6 +450,7 @@ def test_delegate_patch_artifact_preserves_lf(monkeypatch, tmp_path: Path) -> No
         patch="diff --git a/value.py b/value.py\n--- a/value.py\n+++ b/value.py\n",
     )
     monkeypatch.setattr(cli, "delegate_local", lambda **_kwargs: fake_result)
+    monkeypatch.setattr(cli, "enforce_acceptance", lambda *_args, **_kwargs: fake_result)
     args = Namespace(
         task=task_path,
         repo=tmp_path,
@@ -519,6 +529,15 @@ def test_delegate_require_triage_returns_decision_record_on_success(
         cli,
         "delegate_local",
         lambda **_kwargs: DelegationResult(
+            task_id="safe-triage",
+            status=ResultStatus.SUCCESS,
+            summary="verified",
+        ),
+    )
+    monkeypatch.setattr(
+        cli,
+        "enforce_acceptance",
+        lambda *_args, **_kwargs: DelegationResult(
             task_id="safe-triage",
             status=ResultStatus.SUCCESS,
             summary="verified",

@@ -347,7 +347,11 @@ class A2AState:
         self.workspace_locks: dict[str, threading.Lock] = {}
         self.lock = threading.Lock()
         self.client_script = Path(__file__).with_name("claude_mcp_delegate.py")
-        state_value = getattr(args, "state_dir", None) or os.environ.get("CLAUDE_TEAM_BRIDGE_STATE_DIR")
+        state_value = (
+            getattr(args, "state_dir", None)
+            or os.environ.get("CLAUDE_ORCHESTRATOR_STATE_DIR")
+            or os.environ.get("CLAUDE_TEAM_BRIDGE_STATE_DIR")
+        )
         self.state_dir = Path(state_value).resolve() if state_value else None
         self.jobs_dir = self.state_dir / "jobs" if self.state_dir else None
         self.jobs: dict[str, dict[str, Any]] = {}
@@ -358,8 +362,8 @@ class A2AState:
         if self.state_dir:
             self._load_jobs()
             self._load_schedules()
-            self.scheduler_thread = threading.Thread(target=self._schedule_loop, daemon=True, name="claude-team-scheduler")
-            self.scheduler_thread.start()
+        self.scheduler_thread = threading.Thread(target=self._schedule_loop, daemon=True, name="claude-orchestrator-scheduler")
+        self.scheduler_thread.start()
 
     def _job_path(self, job_id: str) -> Path:
         if not self.jobs_dir:
@@ -550,7 +554,7 @@ class A2AState:
             return
         cancel_event = threading.Event()
         self.job_cancel[job_id] = cancel_event
-        thread = threading.Thread(target=self._run_job, args=(job_id, cancel_event), daemon=True, name=f"claude-team-job-{job_id[:24]}")
+        thread = threading.Thread(target=self._run_job, args=(job_id, cancel_event), daemon=True, name=f"claude-orchestrator-job-{job_id[:24]}")
         self.job_threads[job_id] = thread
         thread.start()
 
@@ -1421,7 +1425,11 @@ def main() -> int:
     parser.add_argument("--cli-fallback", action="store_true", default=bool(os.environ.get("CLAUDE_A2A_CLI_FALLBACK")))
     parser.add_argument("--no-cli-fallback", action="store_true")
     parser.add_argument("--timeout-seconds", type=int)
-    parser.add_argument("--state-dir", default=os.environ.get("CLAUDE_TEAM_BRIDGE_STATE_DIR"))
+    parser.add_argument(
+        "--state-dir",
+        default=os.environ.get("CLAUDE_ORCHESTRATOR_STATE_DIR")
+        or os.environ.get("CLAUDE_TEAM_BRIDGE_STATE_DIR"),
+    )
     args = parser.parse_args()
     if args.timeout_seconds is not None and args.timeout_seconds <= 0:
         parser.error("--timeout-seconds must be greater than zero")
@@ -1433,7 +1441,7 @@ def main() -> int:
     if is_lan and not (args.tls_cert and args.tls_key):
         parser.error("LAN binding requires --tls-cert and --tls-key; use a secure tunnel for plain HTTP")
     if not args.state_dir:
-        args.state_dir = str(Path.home() / ".claude-team-bridge")
+        args.state_dir = str(Path.home() / ".claude-orchestrator")
     state = A2AState(args)
     with A2AServer((args.host, args.port), state) as server:
         if args.tls_cert and args.tls_key:

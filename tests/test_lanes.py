@@ -19,16 +19,16 @@ def test_lane_registry_uses_canonical_names_and_roles() -> None:
         "local-qwen",
         "claude-task",
         "claude-mcp",
-        "codex-review",
+        "sol-reviewer",
         "agy-antigravity",
     ]
     assert manifest[0]["role"] == "mechanical worker"
-    assert manifest[1]["role"] == "primary implementation/team worker"
-    assert manifest[3]["role"] == "independent verifier"
-    assert manifest[3]["model"] == "gpt-5.6-luna"
+    assert manifest[1]["role"] == "Claude implementation worker"
+    assert manifest[3]["role"] == "Sol high independent read-only reviewer"
+    assert manifest[3]["model"] == "gpt-5.6-sol"
     assert manifest[-1]["role"] == "Google-stack scout/planner"
     assert canonical_lane_name("codex-ollama") == "local-qwen"
-    assert canonical_lane_name("review") == "codex-review"
+    assert canonical_lane_name("review") == "sol-reviewer"
     assert canonical_lane_name("agy") == "agy-antigravity"
 
 
@@ -78,7 +78,7 @@ def test_lane_health_manifest_reports_missing_prerequisites(monkeypatch) -> None
         "local-qwen",
         "claude-task",
         "claude-mcp",
-        "codex-review",
+        "sol-reviewer",
         "agy-antigravity",
     }
     assert all(item["status"] == "blocked" for item in manifest if item["name"] != "claude-mcp")
@@ -106,11 +106,12 @@ def test_lane_health_manifest_reports_available_cli_prerequisites(monkeypatch) -
     }
 
 
-def test_reviewer_subagent_toml_defaults_to_gpt_56_luna() -> None:
+def test_sol_reviewer_agent_defaults_to_gpt_56_sol() -> None:
     reviewer = tomllib.loads(
-        Path(".codex/agents/reviewer.toml").read_text(encoding="utf-8")
+        Path(".codex/agents/sol-reviewer.toml").read_text(encoding="utf-8")
     )
-    assert reviewer["model"] == "gpt-5.6-luna"
+    assert reviewer["name"] == "sol-reviewer"
+    assert reviewer["model"] == "gpt-5.6-sol"
 
 
 def test_review_prompt_is_read_only_and_customizable() -> None:
@@ -138,7 +139,7 @@ def test_review_config_defaults_to_subscription_verifier(monkeypatch) -> None:
     monkeypatch.delenv("AR_CODEX_REVIEW_MODEL", raising=False)
     monkeypatch.delenv("AR_CODEX_REVIEW_REASONING_EFFORT", raising=False)
     config = CodexReviewConfig.from_env(executable="codex-test")
-    assert config.model == "gpt-5.6-luna"
+    assert config.model == "gpt-5.6-sol"
     assert config.reasoning_effort == "high"
 
 

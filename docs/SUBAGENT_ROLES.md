@@ -16,8 +16,8 @@ requirements. The selected model is only one component of the runtime.
 | Lane | Use it for | Do not use it as | Default proof |
 | --- | --- | --- | --- |
 | `local-qwen` | Cheap, offline-capable mechanical work with a finite diff and deterministic checks | An architect, broad refactorer, or final reviewer | Candidate diff, scope gate, declared checks, and parent rerun |
-| `claude-task` | Repository-aware implementation, parallel independent work, and tasks that benefit from a stronger general coding worker | An unreviewed merger or a substitute for the parent’s acceptance decision | Authenticated task receipt, workspace/Git gates, diff inspection, and parent tests |
-| `codex-review` | Independent post-change QA, regression hunting, and adversarial review | A patch author, fixer, or self-approving release gate | Read-only review receipt plus parent reproduction of material findings |
+| `claude-task` | Claude repository-aware implementation worker, parallel independent work, and tasks that benefit from stronger tool/context handling | An unreviewed merger or a substitute for the parent’s acceptance decision | Authenticated task receipt, workspace/Git gates, diff inspection, and parent tests |
+| `sol-reviewer` | Sol high independent post-change QA, regression hunting, and adversarial review | A patch author, fixer, or self-approving release gate | Read-only review receipt plus parent reproduction of material findings |
 | `agy-antigravity` | Google-stack reconnaissance: Gemini, Firebase, Android, Google Cloud, browser/UI, and Google-specific integration risks | A general implementation worker or source of unverified Google product claims | Plan-mode specialist receipt, links/evidence where applicable, and parent-owned implementation/tests |
 
 Claude Agent Teams are most valuable when workers can operate independently and
@@ -51,7 +51,7 @@ These are fresh local probes, not claims inferred from documentation:
 | --- | --- | --- |
 | `local-qwen` | PASS | Ollama was started locally; exact `qwen3.5:4b` was already installed; Codex-over-Ollama completed the bounded smoke in 11.14s, one attempt, with no model pull. |
 | `claude-task` | CLI/auth PASS; native-team MCP BLOCKED | Claude OAuth login and a live probe succeeded. MCP exposed the Agent tool, but the configured `general-purpose` agent type was unavailable. Use the explicit CLI fallback until the native agent type is configured. |
-| `codex-review` | BLOCKED in this environment | The read-only adapter reached `codex exec review`, but Codex CLI 0.87.0 rejected `gpt-5.6-luna` as requiring a newer CLI; it also reported the configured `127.0.0.1:9000/mcp` endpoint refused the connection. No fallback or model downgrade is allowed. |
+| `sol-reviewer` | BLOCKED in this environment | The read-only adapter reached `codex exec review`, but the installed Codex CLI/model entitlement was not sufficient for the Sol high review lane; no fallback or model downgrade is allowed. |
 | `agy-antigravity` | BLOCKED by permission prompt | `agy` was installed and listed the configured Gemini model. The plan-mode probe reached the CLI, but its permission check for `agy --help` was denied. The adapter must remain fail-closed; grant the CLI permission interactively before treating the lane as live. |
 
 At that time, the local result changed routing confidence, not safety

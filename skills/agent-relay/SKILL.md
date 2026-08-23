@@ -11,9 +11,9 @@ workflow and one vocabulary:
 | Lane | Role | Authority | Default model | Worktree policy |
 | --- | --- | --- | --- | --- |
 | `local-qwen` | mechanical worker | free local inference through Ollama and Codex CLI | `qwen3.5:4b` | disposable sandbox; parent reruns proof |
-| `claude-task` | primary implementation/team worker | authenticated Claude Code task bridge, optional Agent Teams | host policy | bounded receipt with Git/workspace gates |
+| `claude-task` | Claude implementation worker | authenticated Claude Code orchestrator, optional Agent Teams | host policy | bounded receipt with Git/workspace gates |
 | `claude-mcp` | remote convenience worker | existing Claude streamable-HTTP MCP server (JSON or SSE) | host policy | remote output/transport receipt; no local sandbox claim |
-| `codex-review` | independent verifier | logged-in Codex CLI subscription | `gpt-5.6-luna`, high effort | read-only review; must not edit |
+| `sol-reviewer` | Sol high independent read-only reviewer | logged-in Codex CLI subscription | `gpt-5.6-sol`, high effort | read-only review; must not edit |
 | `agy-antigravity` | Google-stack scout/planner | local Antigravity CLI session | `gemini-3.1-pro-high`, high effort | plan mode; parent owns edits and proof |
 
 ## Routing rules
@@ -27,10 +27,10 @@ candidate receipt, not proof.
   work; use Agent Teams only when direct teammate coordination earns its cost.
 - Use `claude-mcp` only when an existing remote MCP service is the intended
   execution authority; it does not provide local patch or sandbox proof.
-- Use `codex-review` after implementation for an independent, read-only QA pass.
+- Use `sol-reviewer` after Claude implementation for an independent, read-only QA pass.
 - Use the configurable escalation policy at `plan_end`, `execute`, `review_end`,
   `recovery`, and `release` gates. Let ordinary workers do bulk work; summon a
-  configured Sol-high planner after ordinary planning and high verifier after
+  configured Sol-high planner after ordinary planning and Sol reviewer after
   ordinary review by default; additional rules can summon them on recovery,
   ambiguity, risk, or missing proof.
 - Use `agy-antigravity` for Google-specific ecosystem questions, Firebase,
@@ -45,6 +45,11 @@ the matched rule, signals, selected profile/model, and evidence requirements.
 Malformed policy, unavailable required high-lane capability, missing evidence,
 or ambiguous safety signals fail closed; do not silently fall back to the bulk
 worker and call a required consultation complete.
+
+The default acceptance path is `claude-task` implementation, deterministic
+verification, then `sol-reviewer`. A result is not accepted when either the
+declared tests fail or the Sol reviewer is unavailable, rejects the candidate,
+or cannot produce a read-only receipt.
 
 Treat a high-tier rejection as feedback: return it to the selected bulk worker
 (`claude-task` for repository-aware implementation, or another configured
@@ -274,7 +279,7 @@ powershell -NoProfile -File .\lanes\claude-task\scripts\claude_a2a_delegate.ps1 
 Run the independent Codex subscription review against the current checkout:
 
 ```powershell
-agent-relay review --repo . --model gpt-5.6-luna --reasoning-effort high --uncommitted --json
+agent-relay review --repo . --model gpt-5.6-sol --reasoning-effort high --uncommitted --json
 ```
 
 Ask the Google-stack specialist in plan mode:
@@ -304,4 +309,4 @@ The evidence-backed role matrix and current local readiness receipts are in
 
 `agent-relay`, `subagent`, `ollama`, and `codex-ollama` remain supported for existing
 scripts. New documentation and new integrations should use `agent-relay`,
-`local-qwen`, `claude-task`, `claude-mcp`, `codex-review`, and `agy-antigravity`.
+`local-qwen`, `claude-task`, `claude-mcp`, `sol-reviewer`, and `agy-antigravity`.

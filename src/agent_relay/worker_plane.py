@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 from .claude_task import run_claude_task
 from .claude_mcp import ClaudeMCPConfig, run_claude_mcp_task
+from .acceptance import enforce_acceptance
 from .control import ControlPlaneError, request_json
 from .protocol import (
     AgentCard,
@@ -34,7 +35,7 @@ class WorkerConfig:
     agent_token: str | None = None
     worker_id: str = "agent-relay-worker"
     repo: Path = Path(".")
-    backend: str = "local-qwen"
+    backend: str = "claude-task"
     model: str | None = None
     lease_seconds: float = 300.0
     poll_seconds: float = 2.0
@@ -196,6 +197,12 @@ def _receipt(
         )
     if result.blockers:
         evidence["blockers"] = list(result.blockers)[:5]
+    sol_review = result.metadata.get("sol_review")
+    if isinstance(sol_review, Mapping):
+        evidence["sol_review"] = dict(sol_review)
+    acceptance_gates = result.metadata.get("acceptance_gates")
+    if isinstance(acceptance_gates, list):
+        evidence["acceptance_gates"] = list(acceptance_gates)
     for key in (
         "lane",
         "transport",
@@ -493,6 +500,13 @@ def run_worker_once(config: WorkerConfig) -> list[dict[str, Any]]:
                     }
                 )
                 continue
+            if config.backend == "claude-task":
+                result = enforce_acceptance(
+                    task,
+                    execution_repo,
+                    result,
+                    require_sol_review=True,
+                )
             retryable, recovery_attempt = _retryable_adapter_failure(result, task, leased["envelope"])
             if retryable:
                 _request(

@@ -1,4 +1,4 @@
-"""Small durable state layer for claude-team-bridge profiles and jobs.
+"""Small durable state layer for Claude Orchestrator profiles and jobs.
 
 This stores bounded task receipts, explicit memories, and reviewed skill
 snippets outside the project worktree. It never stores Claude transcripts.

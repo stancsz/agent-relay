@@ -10,7 +10,7 @@ Agent Relay is not primarily a model router. It is the A2A job control plane aro
 
 ## Current state
 
-The repository is a measured local bounded-delegation MVP with an implemented local/separate-process durable coordinator and worker lifecycle. It already contains task contracts, deterministic triage, Ollama/Codex execution, Git sandboxing, patch and scope checks, verification, retry, receipts, batch/evaluation tooling, and conditional Claude/Codex-review/Antigravity adapters. Physical two-PC LAN execution and interruption recovery remain external acceptance gates.
+The repository is a measured local bounded-delegation MVP with an implemented local/separate-process durable coordinator and worker lifecycle. It already contains task contracts, deterministic triage, Ollama/Codex execution, Git sandboxing, patch and scope checks, verification, retry, receipts, batch/evaluation tooling, and conditional Claude-worker/Sol-reviewer/Antigravity adapters. Physical two-PC LAN execution and interruption recovery remain external acceptance gates.
 
 Current evidence and limitations are recorded in [`docs/pm/current-state-audit.md`](docs/pm/current-state-audit.md), [`README.md`](README.md), [`GOAL.md`](GOAL.md), and [`EVALS.md`](EVALS.md).
 

@@ -42,7 +42,7 @@ def test_rules_are_priority_ordered_and_match_operational_signals() -> None:
         "default_action": "continue",
         "profiles": {
             "planner": {"lane": "codex-escalation", "model": "planner-model", "role": "planner"},
-            "verifier": {"lane": "codex-review", "model": "verifier-model", "role": "verifier"},
+        "verifier": {"lane": "sol-reviewer", "model": "verifier-model", "role": "verifier"},
         },
         "rules": [
             {

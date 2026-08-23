@@ -1,11 +1,11 @@
 ---
-name: claude-team-bridge
-description: "Claude Prime: native Claude Code Agent Teams with a durable, bounded, authenticated A2A/LAN gateway. Use for native teams, background jobs, profiles, memory, reusable skills, schedules, and cross-device delegation."
+name: claude-orchestrator
+description: "Coordinate bounded Claude implementation workers with durable authenticated A2A/LAN jobs, explicit evidence, recovery, and read-only verification."
 ---
 
-# Claude Prime
+# Claude Orchestrator
 
-Use this skill when Claude Code should do bounded work as a native Agent Team, or when a remote orchestrator needs to reach a Claude host over authenticated LAN A2A. The bridge is a durable control plane around Claude's native runtime; it is not a second fake team implementation.
+Use this skill when an orchestrator needs to run bounded Claude worker tasks, optional native Agent Teams, or authenticated LAN A2A. The orchestrator is a durable control plane around Claude's native runtime; it is not a second fake team implementation.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ Use this skill when Claude Code should do bounded work as a native Agent Team, o
 local or remote orchestrator
     | bounded JSON task packet + digest
     v
-authenticated Claude Prime daemon (one host, one allowlisted workspace)
+authenticated Claude Orchestrator daemon (one host, one allowlisted workspace)
     | queue / heartbeat / profile / memory / schedule
     | fresh stdio MCP session; CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
     v
@@ -28,13 +28,13 @@ Claude owns the team lifecycle and teammate contexts. The bridge owns the networ
 
 Native Agent Teams are not themselves a cross-machine LAN protocol. A team lives in the Claude host's local `~/.claude/teams` and `~/.claude/tasks` state. To use another computer, run a bridge on that computer and send a bounded A2A packet to it. Do not forward chat history, transcripts, context windows, credentials, repository dumps, or prior task results.
 
-## Prime Agent and Hermes-inspired operating layer
+## Durable orchestration operating layer
 
-This skill keeps Claude as the native coding engine and adds the operational strengths users value in [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent) and [Hermes Agent](https://github.com/NousResearch/hermes-agent):
+This skill keeps Claude as the native coding engine and adds durable orchestration capabilities:
 
-- Prime-style durable jobs, heartbeats, reattachment, cancellation/resume, schedules, and programmatic teammate calls.
-- Prime-style reviewable harness state without rewriting the base skill or silently changing the task contract.
-- Hermes-style isolated profiles, explicit searchable memory, reusable skill snippets, and a gateway that can be reached from another device.
+- Durable jobs, heartbeats, reattachment, cancellation/resume, schedules, and programmatic teammate calls.
+- Reviewable harness state without silently changing the task contract.
+- Isolated profiles, explicit searchable memory, reusable skill snippets, and a gateway that can be reached from another device.
 
 Memory and skill writes are explicit and bounded. The bridge never turns a transcript into hidden prompt state.
 
@@ -78,7 +78,7 @@ powershell -NoProfile -File `
   -Port 8787 `
   -WorkspaceRoot "C:\path\to\repo" `
   -AuthToken $env:CLAUDE_A2A_AUTH_TOKEN `
-  -StateDir "C:\Users\stanc\.claude-team-bridge"
+  -StateDir "C:\Users\stanc\.claude-orchestrator"
 ```
 
 The daemon starts no Claude process at launch. Every execution gets a fresh `claude.cmd mcp serve` session with the selected workspace as its working directory. Asynchronous jobs continue after the submitting client disconnects; state stays outside the repository.
@@ -142,7 +142,7 @@ task = build_task(
     remember=True,
     team={"name": "feature-team", "members": [
         {"name": "builder", "role": "worker", "objective": "Implement the requested feature and run focused checks."},
-        {"name": "reviewer", "role": "verifier", "objective": "Independently inspect the diff and test evidence without editing."},
+        {"name": "claude-verifier", "role": "verifier", "objective": "Independently inspect the diff and test evidence without editing."},
     ]},
     expected_change=True,
 )

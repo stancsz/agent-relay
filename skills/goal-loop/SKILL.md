@@ -9,15 +9,15 @@ metadata:
 
 Keep one concrete goal moving through bounded Claude execution waves while Codex remains the supervisor, verifier, document owner, and final ship authority.
 
-Use the installed `claude-team-bridge` skill for Claude execution. Goal Loop adds the durable goal lifecycle, fixed concurrency policy, checkpoint contract, and recurring Codex supervision; it does not replace or bypass the bridge.
+Use the installed `claude-orchestrator` skill for Claude execution. Goal Loop adds the durable goal lifecycle, fixed concurrency policy, checkpoint contract, and recurring Codex supervision; it does not replace or bypass the orchestrator.
 
 ## Defaults and hard limits
 
-- Use exactly one Claude lead as the goal orchestrator.
-- Give the lead three Claude teammates by default. Three is the hard maximum for concurrently active teammates.
+- Create exactly one `claude-orchestrator` lead for the goal.
+- Give the orchestrator up to three `claude-worker` teammates by default. Three is the hard maximum for concurrently active workers.
 - Check progress once per hour by default. The user may request a slower or faster interval.
 - Do not count the lead against the three-teammate limit.
-- Do not nest Claude teams. Teammates report to the lead and must not create subteams or recursively invoke Goal Loop.
+- Do not nest Claude orchestrators. Workers report to the orchestrator and must not create subteams or recursively invoke Goal Loop.
 - Keep all Claude work bounded by explicit paths, acceptance criteria, constraints, and verification commands.
 - Drive the loop from exactly `ROADMAP.md`, `GOAL.md`, and `EVAL.md`. Claude receipts supplement these files; they do not replace them.
 
@@ -30,25 +30,32 @@ The durable identity is the stable `goal_id`, profile, checkpoints, receipts, an
 3. Read [references/document-control-plane.md](references/document-control-plane.md). Resolve or initialize exactly `ROADMAP.md`, `GOAL.md`, and `EVAL.md` without replacing human-authored content.
 4. Read `ROADMAP.md`, then select the highest-priority ready roadmap item. Read `GOAL.md` and `EVAL.md` before deciding whether to dispatch, resume, verify, or stop.
 5. Run `scripts/validate_goal_docs.py <workspace>` after the managed sections exist. Resolve every reported concurrency, identity, or terminal-dispatch evidence issue before launching more Claude work.
-6. Load and follow `claude-team-bridge`. Verify relay health, exact workspace root, authentication boundary, and live native-team capability before submitting work.
+6. Load and follow `claude-orchestrator`. Verify relay health, exact workspace root, authentication boundary, and live native-team capability before submitting work.
 7. Create a stable safe `goal_id` and a dedicated bridge profile. Keep durable bridge state outside the repository.
-8. Read [references/orchestrator-contract.md](references/orchestrator-contract.md), then build a self-contained `team` packet for one lead and up to three teammates. Include bounded excerpts and hashes of the three control files. Submit it asynchronously so the job survives client disconnection.
+8. Read [references/orchestrator-contract.md](references/orchestrator-contract.md), then build a self-contained `team` packet for one orchestrator and up to three workers. Include bounded excerpts and hashes of the three control files. Submit it asynchronously so the job survives client disconnection.
 9. Immediately write the returned orchestrator and teammate instance/job identifiers into the `GOAL.md` dispatch ledger. Every dispatch must reference one stable roadmap item ID and the current goal revision.
 10. When the Codex automation tool is available, create one hourly heartbeat attached to the current task. Its prompt must inspect this exact `goal_id` and `job_id`, apply the supervision rules below, and avoid starting work when an active lease already exists. Prefer updating an existing matching heartbeat over creating a duplicate.
-11. Return the `goal_id`, active `job_id`, workspace, roadmap item, teammate count, check-in interval, transport, and any degraded capability to the user.
+11. Return the `goal_id`, active `job_id`, workspace, roadmap item, worker count, check-in interval, transport, and any degraded capability to the user.
+
+The standard work path is fixed: `claude-task` performs implementation, the
+read-only `sol-reviewer` gate independently reviews the candidate, and declared
+deterministic tests must pass before the result is accepted. The parent Codex
+Desktop session owns final review, integration, release decisions, and any UI
+work that requires direct visual or interactive judgment.
 
 Do not silently treat the CLI fallback as proof that one lead coordinated three native teammates. If native teams are unavailable, report the runtime limitation and ask before using a reduced single-worker or sequential fallback.
 
-## Claude lead behavior
+## Claude orchestrator behavior
 
-The lead owns decomposition and coordination inside the bounded goal contract. It should keep useful work moving, normally through successive waves of up to three teammates:
+The Claude orchestrator owns decomposition and coordination inside the bounded goal contract. It should keep useful work moving, normally through successive waves of up to three workers:
 
-- Assign each teammate one concrete task with an explicit owner, path scope, expected output, and verification.
+- Assign each `claude-worker` one concrete task with an explicit owner, path scope, expected output, and verification.
 - Prefer disjoint write scopes. Use one teammate as a read-only verifier when independent review is valuable.
 - Keep all three slots useful when the work genuinely supports parallelism; leave slots idle rather than inventing work.
-- Reassign a slot only after the previous assignment has reached a terminal state and its evidence has been recorded.
+- Reassign a slot only after the previous worker assignment has reached a terminal state and its evidence has been recorded.
 - Integrate teammate results, run relevant checks, and emit a checkpoint before requesting another execution wave.
-- Escalate ambiguity, missing authority, security-sensitive decisions, external credentials, and human taste decisions instead of guessing.
+- Require `sol-reviewer` to independently inspect the integrated result and deterministic test evidence before acceptance.
+- Escalate ambiguity, missing authority, security-sensitive decisions, external credentials, UI work, and human taste decisions to the parent Codex instead of guessing.
 
 The lead and teammates must not commit, push, merge, deploy, purchase, publish, message third parties, change permissions, or perform other consequential external actions unless the user has separately authorized that action.
 

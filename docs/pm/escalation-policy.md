@@ -35,12 +35,12 @@ Bulk-lane selection happens before the high-gate decision:
 | Work shape | Preferred bulk lane | Why |
 | --- | --- | --- |
 | Small mechanical, finite, locally verifiable change | `local-qwen` | Lowest-cost execution with parent-owned proof |
-| Repository-aware implementation, multi-file repair, or parallel disjoint work | `claude-task` | Stronger tool/context handling and bounded Claude task receipt |
+| Repository-aware implementation, multi-file repair, or parallel disjoint work | `claude-task` | Claude worker with stronger tool/context handling and bounded task receipt |
 | Existing remote Claude MCP authority | `claude-mcp` | Explicit remote execution boundary; no local patch proof claim |
 
 Claude is therefore the normal mid-tier implementation worker when the task
 needs it, not an always-on reviewer. The orchestrator should claim concrete
-work for a bounded Claude lead, use teammates only for genuine disjoint
+work for a bounded Claude worker, use teammates only for genuine disjoint
 parallelism, and close the wave when there is no work. Sol high remains the
 independent second opinion at the two gates.
 
@@ -112,7 +112,7 @@ silently replaced with permissive defaults.
       "role": "planner"
     },
     "high_verifier": {
-      "lane": "codex-review",
+      "lane": "sol-reviewer",
       "model": "gpt-5.6-sol",
       "reasoning_effort": "high",
       "role": "verifier"

@@ -93,7 +93,7 @@ def test_agent_type_default_omission() -> None:
         inputs=[],
         team={"name": "agent-type-default", "members": [
             {"name": "builder", "role": "worker", "objective": "Worker no-op."},
-            {"name": "reviewer", "role": "verifier", "objective": "Verifier no-op."},
+            {"name": "claude-verifier", "role": "verifier", "objective": "Verifier no-op."},
         ]},
         expected_change=False,
     )
@@ -212,7 +212,7 @@ def test_agent_type_default_omission() -> None:
                    "acceptance_criteria": [], "constraints": [], "inputs": [], "profile_context": {}},
         "members": [
             {"name": "builder", "role": "worker", "objective": "w"},
-            {"name": "reviewer", "role": "verifier", "objective": "v"},
+            {"name": "claude-verifier", "role": "verifier", "objective": "v"},
         ],
     }
     manifest_explicit = json.loads(json.dumps(manifest_default))
@@ -257,7 +257,7 @@ def test_agent_type_default_omission() -> None:
         (team_dir / "config.json").write_text("{}", encoding="utf-8")
         (inbox_dir / "team-lead.json").write_text(json.dumps([
             {"from": "builder", "text": "A2A_RESULT FAKE_BUILDER"},
-            {"from": "reviewer", "text": "A2A_RESULT FAKE_REVIEWER"},
+            {"from": "claude-verifier", "text": "A2A_RESULT FAKE_CLAUDE_VERIFIER"},
         ]), encoding="utf-8")
         session.team_file_path = team_dir / "config.json"
 
@@ -311,7 +311,7 @@ def test_native_capability_fallback() -> None:
             inputs=[],
             team={"name": "capability-fallback", "members": [
                 {"name": "builder", "role": "worker", "objective": "No-op."},
-                {"name": "reviewer", "role": "verifier", "objective": "No-op."},
+                {"name": "claude-verifier", "role": "verifier", "objective": "No-op."},
             ]},
             expected_change=False,
         )
@@ -452,7 +452,7 @@ def test_team_fallback_verifier_copies_objective_sources() -> None:
             inputs=[],
             team={"name": "source-copy", "members": [
                 {"name": "writer", "role": "worker", "objective": "No-op."},
-                {"name": "reviewer", "role": "verifier", "objective": "Check docs/input.md."},
+                {"name": "claude-verifier", "role": "verifier", "objective": "Check docs/input.md."},
             ]},
             expected_change=False,
         )
@@ -660,7 +660,7 @@ def main() -> int:
                 inputs=[],
                 team={"name": "requested-name", "members": [
                     {"name": "worker", "role": "worker", "objective": "Return the worker smoke result."},
-                    {"name": "reviewer", "role": "verifier", "objective": "Return the verifier smoke result."},
+                    {"name": "claude-verifier", "role": "verifier", "objective": "Return the verifier smoke result."},
                 ]},
                 expected_change=False,
             )
@@ -670,7 +670,7 @@ def main() -> int:
             assert team_result["server_receipt"]["team_mode"] is True
             assert team_result["server_receipt"]["team_complete"] is True
             assert "FAKE_MODERN_TEAM_worker" in team_result["output"]
-            assert "FAKE_MODERN_TEAM_reviewer" in team_result["output"]
+            assert "FAKE_MODERN_TEAM_claude-verifier" in team_result["output"]
 
             os.environ["PATH"] = str(legacy_team_fixture) + os.pathsep + old_path
             os.environ["FAKE_TEAM_FILE_PATH"] = str(legacy_team_root / "config.json")

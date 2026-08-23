@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from threading import Thread
 
@@ -55,6 +56,17 @@ def test_real_http_coordinator_and_worker_plane_complete_with_receipt_and_artifa
         )
 
     monkeypatch.setattr(worker_plane, "execute_task", fake_execute)
+    def fake_acceptance(_task, _repo, result, **_kwargs):
+        metadata = dict(result.metadata)
+        metadata["sol_review"] = {
+            "lane": "sol-reviewer",
+            "status": "PASS",
+            "runtime": {"model": "gpt-5.6-sol", "read_only": True},
+        }
+        metadata["acceptance_gates"] = ["deterministic-verification", "sol-reviewer"]
+        return replace(result, metadata=metadata)
+
+    monkeypatch.setattr(worker_plane, "enforce_acceptance", fake_acceptance)
     try:
         request_json(
             base,

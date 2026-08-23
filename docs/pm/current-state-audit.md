@@ -11,7 +11,7 @@ Agent Relay already has a differentiated bounded-delegation core:
 - local Qwen/Ollama and Codex-over-Ollama execution;
 - Git sandboxing, patch normalization, scope checks, verification, retry, and receipts;
 - batch/evaluation/economics tooling;
-- Claude task, Codex review, and Antigravity adapter surfaces.
+- Claude worker, Sol reviewer, and Antigravity adapter surfaces.
 
 The cross-machine control-plane foundation now exists as a versioned HTTP/SQLite
 slice, including durable task state, worker discovery, scoped credentials,
@@ -20,6 +20,25 @@ The Claude adapter can also dispatch to an already-running authenticated remote
 Claude A2A daemon. It is not yet a release-proven two-PC product: physical LAN
 execution, identity provisioning, real adapter interruption/recovery, and
 side-effect-aware retry still need external acceptance evidence.
+
+## Implementation coverage
+
+The feature inventory below contains 23 capability rows. Of those, 17 (74%)
+have an implemented source/test slice in this checkout, including capabilities
+whose local implementation is still conditional on an external service or
+whose operational hardening is incomplete. Four rows (17%) are partial and two
+rows (9%) are conditional-only. This is an unweighted engineering-coverage
+measure, not a product-readiness score: the MVP remains below its release gate
+until the physical two-PC LAN acceptance run is completed.
+
+The most important gaps are tracked explicitly rather than hidden inside that
+percentage: physical PC-A/PC-B execution and interruption recovery, real LAN
+certificate/CA and firewall provisioning, native Claude Agent Team availability
+in the installed runtime, side-effect-aware retry, local-Qwen stop support,
+dashboard/metrics/retention controls, finer-grained client roles, and
+production backup/deployment policy. Automatic result-driven multi-step
+orchestrator submission is also not implemented; the existing follow-up-chain
+APIs are durable local primitives, not proof of that end-to-end behavior.
 
 ## Feature inventory
 
@@ -33,7 +52,8 @@ consultation surface: versioned stage signals, ordered rules, explicit
 consultation evidence. The default local flow summons Sol high at `plan_end`
 and `review_end`. Durable remote submissions still need an orchestrator or
 follow-up chain to carry the same decision and receipt; a manually invoked
-`review` remains only a review-lane capability.
+`review` remains a manual Sol-reviewer capability; the primary Claude-worker
+path now invokes the same read-only gate automatically.
 
 | Capability | State | Evidence | Product assessment |
 | --- | --- | --- | --- |
@@ -45,8 +65,9 @@ follow-up chain to carry the same decision and receipt; a manually invoked
 | Patch/scope/verification/retry | Implemented | [`src/agent_relay/delegate.py`](../../src/agent_relay/delegate.py) | Core proof pipeline; must become a worker conformance contract. |
 | Result receipts and compact handoff | Implemented | [`src/agent_relay/result.py`](../../src/agent_relay/result.py) | Directly maps to remote artifact/receipt UX. |
 | Batch/evaluation/checkpointing | Implemented | [`src/agent_relay/batch.py`](../../src/agent_relay/batch.py), [`evals/runner.py`](../../evals/runner.py) | Good internal measurement; `batch` is sequential, not a distributed scheduler. |
-| Claude task bridge | Implemented/conditional | [`src/agent_relay/claude_task.py`](../../src/agent_relay/claude_task.py), [`scripts/probe_claude_lane.py`](../../scripts/probe_claude_lane.py), [`scripts/smoke_claude_task.py`](../../scripts/smoke_claude_task.py) | Supports local ephemeral bridge or an existing authenticated remote A2A daemon; native team availability remains environment-dependent. |
-| Codex review lane | Conditional | [`src/agent_relay/codex_review.py`](../../src/agent_relay/codex_review.py) | Useful verifier surface; environment readiness must be deeper than executable presence. |
+| Claude worker/orchestrator backend | Implemented/conditional | [`src/agent_relay/claude_task.py`](../../src/agent_relay/claude_task.py), [`lanes/claude-task/SKILL.md`](../../lanes/claude-task/SKILL.md), [`scripts/probe_claude_lane.py`](../../scripts/probe_claude_lane.py), [`scripts/smoke_claude_task.py`](../../scripts/smoke_claude_task.py) | Supports local ephemeral bridge or an existing authenticated remote A2A daemon; native team availability remains environment-dependent. |
+| Claude worker acceptance gate | Implemented locally | [`src/agent_relay/acceptance.py`](../../src/agent_relay/acceptance.py), [`src/agent_relay/worker_plane.py`](../../src/agent_relay/worker_plane.py), [`src/agent_relay/store.py`](../../src/agent_relay/store.py) | `claude-task` is the default worker; deterministic verification and a passing `sol-reviewer` receipt are required before success is accepted. |
+| Sol reviewer lane | Conditional | [`src/agent_relay/codex_review.py`](../../src/agent_relay/codex_review.py), [`src/agent_relay/acceptance.py`](../../src/agent_relay/acceptance.py) | Read-only `gpt-5.6-sol` review; environment readiness must be deeper than executable presence. |
 | Antigravity lane | Conditional | [`src/agent_relay/agy_antigravity.py`](../../src/agent_relay/agy_antigravity.py) | Good specialist boundary; accept-edits needs stronger workspace/security policy. |
 | Lane registry/doctor | Partial | [`src/agent_relay/lanes.py`](../../src/agent_relay/lanes.py) | Readiness now distinguishes ready/degraded/blocked/unknown; Codex/AGY still need invocation/auth smoke. |
 | Remote A2A/MCP task API | Implemented locally/conditional LAN | [`src/agent_relay/control.py`](../../src/agent_relay/control.py), [`src/agent_relay/claude_task.py`](../../src/agent_relay/claude_task.py), [`src/agent_relay/claude_mcp.py`](../../src/agent_relay/claude_mcp.py), [`src/agent_relay/mcp.py`](../../src/agent_relay/mcp.py), and `serve`/`mcp`/lifecycle CLI | Versioned authenticated coordinator, direct remote Claude A2A dispatch, live existing-Claude-MCP dispatch, and an MCP façade work in local acceptance; physical Agent Relay two-PC proof remains. |

@@ -10,8 +10,8 @@ The repository's unified subagent surface now has four explicit lanes:
 | Lane | Role | Default target | Authority boundary |
 |---|---|---|---|
 | `local-qwen` | local/free mechanical worker | Qwen3.5:4B | bounded disposable sandbox and parent verification |
-| `claude-task` | primary Claude implementation/team worker | host policy | authenticated task bridge and Git gates |
-| `codex-review` | subscription QA verifier | GPT-5.6 Luna, high | read-only Codex CLI review receipt |
+| `claude-task` | Claude implementation worker | host policy | authenticated Claude Orchestrator task bridge and Git gates |
+| `sol-reviewer` | Sol high independent read-only reviewer | GPT-5.6 Sol, high | read-only Codex CLI review receipt |
 | `agy-antigravity` | Google-stack scout/planner | Gemini 3.1 Pro, high | plan consultation; parent owns edits and validation |
 
 The evidence-backed role matrix and local receipts are maintained in
@@ -129,7 +129,7 @@ AR_CODEX_TEMPERATURE=0 (deterministic bounded-eval default)
 AR_CODEX_SEED=<optional fixed seed, e.g. 17, for reproducible evals>
 AR_CODEX_OUTPUT_SCHEMA=false (experimental; provider compatibility required)
 AR_CODEX_RETRY_MODEL=qwen3.5:4b (optional explicit same-model retry)
-AR_CODEX_REVIEW_MODEL=gpt-5.6-luna (read-only subscription review lane)
+AR_CODEX_REVIEW_MODEL=gpt-5.6-sol (Sol high read-only review lane)
 AR_CODEX_REVIEW_REASONING_EFFORT=high
 AR_CODEX_REVIEW_TIMEOUT_SECONDS=300
 AR_AGY_BIN=agy.cmd (optional executable override)

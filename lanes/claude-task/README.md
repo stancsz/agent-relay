@@ -1,33 +1,32 @@
-# Claude Prime
+# Claude Orchestrator
 
-Claude Prime is a durable operating layer for Claude Code Agent Teams.
+Claude Orchestrator is a durable operating layer for Claude Code workers and
+optional native Agent Teams.
 
-It keeps Claude as the coding engine and adds the pieces needed for reliable
+It keeps Claude as the implementation engine and adds the pieces needed for reliable
 long-running work: native team coordination, background jobs, heartbeats,
 recovery, bounded memory, reusable skills, schedules, independent evidence,
 and authenticated A2A/LAN access.
 
-This project is not affiliated with Prime Intellect or Nous Research. It takes
-useful operating patterns from [Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent)
-and [Hermes Agent](https://github.com/NousResearch/hermes-agent), while using
-Claude Code as the execution runtime.
+It uses Claude Code as the execution runtime and does not claim to replace
+Claude Code.
 
 ## Re-throning Claude / 让 Claude 重回王座
 
-The central idea is simple: Claude should remain the source of execution
-truth. Claude understands the repository, calls tools, edits code, and works
-with teammates. Claude Prime turns that work into a bounded, durable, and
-verifiable system.
+The central idea is simple: Claude should remain the implementation worker.
+Claude understands the repository, calls tools, edits code, and can coordinate
+bounded workers. Claude Orchestrator turns that work into a bounded, durable,
+and verifiable system.
 
 核心目标不是再造一个“像 Claude 的 Agent”，而是让 Claude 原生的 Agent
 Teams 重新成为工作流的执行核心：Claude 负责理解代码、调用工具、修改项目
-和协调队友；Claude Prime 负责任务边界、断线恢复、跨设备交接和证据验证。
+和协调队友；Claude Orchestrator 负责任务边界、断线恢复、跨设备交接和证据验证。
 
-| Borrowed design pattern | Claude Prime implementation |
+| Capability | Claude Orchestrator implementation |
 | --- | --- |
-| Prime Agent: long-running control | Durable jobs, heartbeats, recovery, cancellation, resume, goals, and schedules |
-| Hermes Agent: persistent organization | Isolated profiles, explicit memory, reusable skills, and gateway access |
-| Claude Agent Teams: native parallel work | Independent teammate contexts, shared tasks, direct messaging, and version-aware team lifecycle |
+| Durable execution | Durable jobs, heartbeats, recovery, cancellation, resume, goals, and schedules |
+| Persistent organization | Isolated profiles, explicit memory, reusable skills, and gateway access |
+| Claude worker coordination | Independent worker contexts, shared tasks, direct messaging, and version-aware team lifecycle |
 | Evidence-driven engineering | Bounded packets, context digests, workspace locks, Git fingerprints, and independent verifier gates |
 
 借鉴的是设计方式，不是复制运行时，也不是把对话历史偷偷塞回上下文。记忆
@@ -39,7 +38,7 @@ Teams 重新成为工作流的执行核心：Claude 负责理解代码、调用�
 local or remote orchestrator
         | bounded task JSON + context digest
         v
-authenticated Claude Prime daemon
+authenticated Claude Orchestrator daemon
         | queue / heartbeat / profile / memory / schedule
         | fresh `claude mcp serve` session per task
         v
@@ -49,9 +48,9 @@ Claude Code native Agent Teams
 bounded result + Git/worktree evidence
 ```
 
-The installed skill keeps its stable name, `claude-team-bridge`, so existing
-Codex installations do not break. The repository and product are now named
-Claude Prime.
+The installed skill is named `claude-orchestrator`. The backend contract remains
+`claude-task` so existing Agent Relay task packets and CLI commands stay
+compatible.
 
 ## What it provides
 
@@ -74,11 +73,11 @@ Claude Prime.
 
 ## Install and start a host
 
-The source repository is [github.com/stancsz/claude-prime](https://github.com/stancsz/claude-prime).
-The installed Codex skill is normally located at:
+The source implementation is vendored under the Agent Relay repository's
+`lanes/claude-task/` backend. The installed Codex skill is normally located at:
 
 ```text
-C:\Users\stanc\.codex\skills\claude-team-bridge
+C:\Users\stanc\.codex\skills\claude-orchestrator
 ```
 
 Start a loopback daemon for one allowlisted workspace:
@@ -87,7 +86,7 @@ Start a loopback daemon for one allowlisted workspace:
 powershell -NoProfile -File `
   "<skill-root>\scripts\start_claude_a2a_server.ps1" `
   -WorkspaceRoot "C:\path\to\repo" `
-  -StateDir "C:\Users\stanc\.claude-team-bridge"
+  -StateDir "C:\Users\stanc\.claude-orchestrator"
 ```
 
 For LAN access, bind deliberately and provide a long random token:
@@ -100,7 +99,7 @@ powershell -NoProfile -File `
   -Port 8787 `
   -WorkspaceRoot "C:\path\to\repo" `
   -AuthToken $env:CLAUDE_A2A_AUTH_TOKEN `
-  -StateDir "C:\Users\stanc\.claude-team-bridge"
+  -StateDir "C:\Users\stanc\.claude-orchestrator"
 ```
 
 Use a firewall rule and keep the workspace root narrow. Never put the token in
@@ -173,7 +172,7 @@ task = build_task(
     remember=True,
     team={"name": "feature-team", "members": [
         {"name": "builder", "role": "worker", "objective": "Implement the feature and run focused checks."},
-        {"name": "reviewer", "role": "verifier", "objective": "Review evidence read-only and report risks."},
+        {"name": "claude-verifier", "role": "verifier", "objective": "Review evidence read-only and report risks."},
     ]},
     expected_change=True,
 )
@@ -206,7 +205,7 @@ separate Claude feature with its own version and platform limits; authenticated
 HTTP A2A is the explicit Windows LAN path. See the official
 [cross-session messaging documentation](https://code.claude.com/docs/en/cross-session-messaging).
 
-Claude Prime is not a general autonomous model, does not silently modify its
+Claude Orchestrator is not a general autonomous model, does not silently modify its
 own permissions, and does not replace human responsibility for review, merge,
 or release decisions. Use `-NoCliFallback` when native-only execution is a hard
 requirement; use `-CliFallback` when an explicitly CLI-based bounded route is

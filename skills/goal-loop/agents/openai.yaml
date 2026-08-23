@@ -1,6 +1,6 @@
 interface:
   display_name: "Goal Loop"
   short_description: "Document-driven Claude orchestration and supervision."
-  default_prompt: "Use $goal-loop to follow ROADMAP.md, coordinate one Claude orchestrator with up to three Claude subagents, and maintain GOAL.md and EVAL.md with hourly evidence-based supervision."
+  default_prompt: "Use $goal-loop to follow ROADMAP.md, create one claude-orchestrator, assign bounded work to claude-worker roles, require sol-reviewer plus deterministic tests before acceptance, and maintain GOAL.md and EVAL.md with hourly evidence-based supervision."
 policy:
   allow_implicit_invocation: true

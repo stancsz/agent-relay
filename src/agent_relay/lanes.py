@@ -47,7 +47,7 @@ LANES: tuple[SubagentLane, ...] = (
     ),
     SubagentLane(
         name="claude-task",
-        role="primary implementation/team worker",
+        role="Claude implementation worker",
         execution="Authenticated Claude Code task bridge with optional Agent Teams",
         model="host policy",
         reasoning=None,
@@ -56,7 +56,7 @@ LANES: tuple[SubagentLane, ...] = (
     ),
     SubagentLane(
         name="claude-mcp",
-        role="remote Claude MCP convenience worker",
+        role="remote Claude MCP worker",
         execution="Existing Claude streamable-HTTP MCP server",
         model="host policy",
         reasoning=None,
@@ -64,10 +64,10 @@ LANES: tuple[SubagentLane, ...] = (
         verification="remote MCP output and transport receipt; no local sandbox claim",
     ),
     SubagentLane(
-        name="codex-review",
-        role="independent verifier",
+        name="sol-reviewer",
+        role="Sol high independent read-only reviewer",
         execution="Codex CLI subscription via logged-in credentials",
-        model="gpt-5.6-luna",
+        model="gpt-5.6-sol",
         reasoning="high",
         mutates_worktree=False,
         verification="read-only review receipt and independent findings",
@@ -83,14 +83,19 @@ LANES: tuple[SubagentLane, ...] = (
     ),
 )
 
+# Keep legacy spellings accepted for existing task packets; manifests and new
+# documentation expose only the canonical role names above.
 _ALIASES = {
     "ollama": "local-qwen",
     "codex-ollama": "local-qwen",
     "qwen": "local-qwen",
     "claude": "claude-task",
     "claude-team": "claude-task",
-    "review": "codex-review",
-    "codex-verifier": "codex-review",
+    "review": "sol-reviewer",
+    "codex-review": "sol-reviewer",
+    "codex-verifier": "sol-reviewer",
+    "sol": "sol-reviewer",
+    "sol-high": "sol-reviewer",
     "agy": "agy-antigravity",
     "antigravity": "agy-antigravity",
 }
@@ -108,7 +113,7 @@ def canonical_lane_name(value: str) -> str:
 def _lane_with_env_overrides(lane: SubagentLane) -> SubagentLane:
     if lane.name == "local-qwen":
         model = os.environ.get("AR_CODEX_MODEL", lane.model)
-    elif lane.name == "codex-review":
+    elif lane.name == "sol-reviewer":
         model = os.environ.get("AR_CODEX_REVIEW_MODEL", lane.model)
     elif lane.name == "agy-antigravity":
         model = os.environ.get("AR_AGY_MODEL", lane.model)
@@ -354,7 +359,7 @@ def lane_health_manifest(*, probe: bool = False) -> list[dict[str, Any]]:
         "local-qwen": lambda: _ollama_health() if probe else _local_qwen_prerequisite_health(),
         "claude-task": lambda: _claude_health(probe_endpoint=probe),
         "claude-mcp": lambda: _claude_mcp_health(probe_endpoint=probe),
-        "codex-review": lambda: _executable_health(
+        "sol-reviewer": lambda: _executable_health(
             env_names=("AR_CODEX_BIN",), defaults=("codex", "codex.exe"), transport="codex-cli"
         ),
         "agy-antigravity": lambda: _executable_health(

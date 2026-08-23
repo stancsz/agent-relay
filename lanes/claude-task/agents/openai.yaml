@@ -1,4 +1,4 @@
 interface:
-  display_name: "Claude Prime"
-  short_description: "Durable Claude Teams with A2A/LAN operations"
-  default_prompt: "Use Claude Prime when bounded implementation, debugging, testing, or review work should run through Claude Code native Agent Teams, with optional durable jobs, profiles, memory, skills, schedules, or authenticated A2A/LAN access."
+  display_name: "Claude Orchestrator"
+  short_description: "Coordinate bounded Claude workers over durable A2A/LAN jobs"
+  default_prompt: "Use Claude Orchestrator to coordinate bounded claude-task implementation workers over durable authenticated A2A/LAN jobs, with explicit evidence and read-only verification."

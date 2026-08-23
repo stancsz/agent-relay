@@ -1,5 +1,5 @@
-name = "reviewer"
-description = "Read-only, high-reasoning reviewer for concise actionable verification."
+name = "sol-reviewer"
+description = "Sol high read-only reviewer for concise actionable verification."
 model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
