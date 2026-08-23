@@ -11,6 +11,8 @@ param(
 
     [string[]]$TargetPath = @(),
 
+    [string]$TargetPathsJson,
+
     [switch]$ExpectChange,
 
     [switch]$ExpectNoChange,
@@ -30,10 +32,26 @@ param(
     [ValidateSet('Mcp', 'Cli')]
     [string]$Transport = 'Cli',
 
-    [string]$McpAgentType
+    [string]$McpAgentType,
+
+    [string]$CliAgentType
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Remove-JsonUnsafeControls {
+    param([AllowNull()][string]$Value)
+    if ($null -eq $Value) { return $null }
+    $builder = [Text.StringBuilder]::new()
+    foreach ($character in $Value.ToCharArray()) {
+        $code = [int][char]$character
+        # Keep JSON whitespace, drop terminal/control escapes that some
+        # Claude reports include inside otherwise valid output-format JSON.
+        if ($code -lt 32 -and $code -notin @(9, 10, 13)) { continue }
+        [void]$builder.Append($character)
+    }
+    return $builder.ToString()
+}
 
 function Invoke-GitText {
     param([string[]]$Arguments)
@@ -63,15 +81,15 @@ function Get-FileFingerprint {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         return 'missing'
     }
-    # Use the .NET API instead of Get-FileHash. The legacy Windows PowerShell
-    # host used by the Claude adapter may not load Microsoft.PowerShell.Utility
-    # even though PowerShell 7 exposes that cmdlet.
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    # Use the .NET API instead of the optional Get-FileHash cmdlet so this
+    # adapter works under minimal/no-profile PowerShell hosts as well.
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $stream = [IO.File]::OpenRead($path)
     try {
-        $bytes = [System.IO.File]::ReadAllBytes($path)
-        return ([System.BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace('-', '')
+        return ([BitConverter]::ToString($algorithm.ComputeHash($stream)) -replace '-', '')
     } finally {
-        $sha256.Dispose()
+        $stream.Dispose()
+        $algorithm.Dispose()
     }
 }
 
@@ -116,15 +134,43 @@ if (-not (Test-Path -LiteralPath $WorkingDirectory -PathType Container)) {
 }
 
 $WorkingDirectory = (Resolve-Path -LiteralPath $WorkingDirectory).Path
-$claudeCommand = if ([string]::IsNullOrWhiteSpace($env:AR_CLAUDE_BIN)) { 'claude.cmd' } else { $env:AR_CLAUDE_BIN }
-$claudeAvailable = $true
-if ([IO.Path]::IsPathRooted($claudeCommand)) {
-    if (-not (Test-Path -LiteralPath $claudeCommand -PathType Leaf)) {
-        $claudeAvailable = $false
+
+if (-not [string]::IsNullOrWhiteSpace($TargetPathsJson)) {
+    try {
+        $decodedTargetPaths = $TargetPathsJson | ConvertFrom-Json
+    } catch {
+        throw "TargetPathsJson must be valid JSON: $($_.Exception.Message)"
     }
-} else {
-    $null = & cmd.exe /d /c where $claudeCommand 2>$null
-    $claudeAvailable = $LASTEXITCODE -eq 0
+    if ($decodedTargetPaths -isnot [System.Collections.IEnumerable] -or $decodedTargetPaths -is [string]) {
+        throw 'TargetPathsJson must contain a JSON array of repository-relative paths.'
+    }
+    $TargetPath = @($decodedTargetPaths | ForEach-Object {
+        if ($_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_)) {
+            throw 'TargetPathsJson entries must be non-empty strings.'
+        }
+        $_
+    })
+}
+
+$claudeCommand = if ([string]::IsNullOrWhiteSpace($env:AR_CLAUDE_BIN)) { $null } else { $env:AR_CLAUDE_BIN }
+$claudeExecutable = $null
+if (-not [string]::IsNullOrWhiteSpace($claudeCommand)) {
+    if ([IO.Path]::IsPathRooted($claudeCommand)) {
+        if (Test-Path -LiteralPath $claudeCommand -PathType Leaf) {
+            $claudeExecutable = (Resolve-Path -LiteralPath $claudeCommand).Path
+        }
+    } else {
+        $resolved = Get-Command $claudeCommand -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -ne $resolved) { $claudeExecutable = $resolved.Source }
+    }
+}
+if ($null -eq $claudeExecutable -and -not [string]::IsNullOrWhiteSpace($env:CLAUDE_CLI_PATH) -and (Test-Path -LiteralPath $env:CLAUDE_CLI_PATH -PathType Leaf)) {
+    $claudeExecutable = (Resolve-Path -LiteralPath $env:CLAUDE_CLI_PATH).Path
+}
+if ($null -eq $claudeExecutable) {
+    $resolved = Get-Command claude.cmd -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -eq $resolved) { $resolved = Get-Command claude.exe -ErrorAction SilentlyContinue | Select-Object -First 1 }
+    if ($null -ne $resolved) { $claudeExecutable = $resolved.Source }
 }
 
 function Remove-PredictableVerificationArtifacts {
@@ -144,8 +190,9 @@ function Remove-PredictableVerificationArtifacts {
         }
     }
 }
-if (-not $claudeAvailable) {
-    throw "$claudeCommand was not found on PATH. Fix the Claude CLI installation or set AR_CLAUDE_BIN before delegating."
+if ($null -eq $claudeExecutable) {
+    $label = if ([string]::IsNullOrWhiteSpace($claudeCommand)) { 'claude.cmd' } else { $claudeCommand }
+    throw "$label was not found on PATH. Fix the Claude CLI installation or set AR_CLAUDE_BIN before delegating."
 }
 
 if ($PSCmdlet.ParameterSetName -eq 'PromptFile') {
@@ -178,13 +225,22 @@ if ($Transport -eq 'Mcp') {
     if (-not [string]::IsNullOrWhiteSpace($Model) -or $null -ne $BudgetUsd) {
         throw 'MCP transport does not accept model or budget overrides. Omit -Model and -BudgetUsd.'
     }
-    $pythonPathOutput = & cmd.exe /d /c where py.exe 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        throw 'py.exe was not found on PATH. MCP transport uses the stdlib-only Python client.'
+    $pythonCommand = Get-Command py.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    $pythonArgs = @()
+    if ($null -eq $pythonCommand) {
+        $pythonCommand = Get-Command python.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -eq $pythonCommand) {
+            $pythonCommand = Get-Command python -ErrorAction SilentlyContinue | Select-Object -First 1
+        }
+    } else {
+        $pythonArgs += '-3'
     }
-    $pythonPath = (($pythonPathOutput -join "`n").Split("`n")[0]).Trim()
+    if ($null -eq $pythonCommand -or [string]::IsNullOrWhiteSpace($pythonCommand.Source)) {
+        throw 'Neither py.exe nor python.exe was found on PATH. MCP transport uses the stdlib-only Python client.'
+    }
+    $pythonPath = $pythonCommand.Source
     $mcpClient = Join-Path $PSScriptRoot 'claude_mcp_delegate.py'
-    $mcpArgs = @('-3', '-X', 'utf8', $mcpClient, '--working-directory', $WorkingDirectory)
+    $mcpArgs = @($pythonArgs + @('-X', 'utf8', $mcpClient, '--working-directory', $WorkingDirectory))
     if (-not [string]::IsNullOrWhiteSpace($McpAgentType)) { $mcpArgs += @('--agent-type', $McpAgentType) }
     if ($null -ne $TimeoutSeconds) {
         if ($TimeoutSeconds -le 0) { throw 'TimeoutSeconds must be greater than zero when supplied.' }
@@ -224,7 +280,8 @@ if ($Transport -eq 'Mcp') {
         try { $mcpReceipt = $stdout.Trim() | ConvertFrom-Json } catch { $mcpTransportError = $_.Exception.Message }
     }
 } else {
-    $claudeArgs = @($claudeCommand, '-p', '--no-session-persistence', '--output-format', 'json', '--allowed-tools', $AllowedTools)
+    $claudeArgs = @($claudeExecutable, '-p', '--no-session-persistence', '--output-format', 'json', '--allowed-tools', $AllowedTools)
+    if (-not [string]::IsNullOrWhiteSpace($CliAgentType)) { $claudeArgs += @('--agent', $CliAgentType) }
     if (-not [string]::IsNullOrWhiteSpace($Model)) { $claudeArgs += @('--model', $Model) }
     if ($null -ne $BudgetUsd) { $claudeArgs += @('--max-budget-usd', ([decimal]$BudgetUsd).ToString([Globalization.CultureInfo]::InvariantCulture)) }
     $psi = [Diagnostics.ProcessStartInfo]::new()
@@ -299,15 +356,23 @@ $requiredResponseSatisfied = if ([string]::IsNullOrWhiteSpace($RequiredResponseT
 $repoStatusUnchanged = $before.status -eq $after.status
 $allowedTargetPaths = @($TargetPath | ForEach-Object { $_.Replace('\', '/') })
 $unexpectedWorktreeChange = $false
+$beforeStatusLines = @($before.status -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+$beforeStatusSet = @{}
+foreach ($line in $beforeStatusLines) {
+    $beforeStatusSet[$line] = $true
+}
+$afterStatusLines = @($after.status -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 if ($ExpectNoChange) {
-    $unexpectedWorktreeChange = -not $repoStatusUnchanged
-} else {
-    $beforeStatusLines = @($before.status -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    $beforeStatusSet = @{}
-    foreach ($line in $beforeStatusLines) {
-        $beforeStatusSet[$line] = $true
+    # A verifier runs after bounded workers in an intentionally dirty
+    # repository. Allow status entries that already existed at its start, but
+    # reject any new entry introduced during the read-only verifier session.
+    foreach ($line in $afterStatusLines) {
+        if (-not $beforeStatusSet.ContainsKey($line)) {
+            $unexpectedWorktreeChange = $true
+            break
+        }
     }
-    $afterStatusLines = @($after.status -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+} else {
     foreach ($line in $afterStatusLines) {
         if ($beforeStatusSet.ContainsKey($line)) {
             continue
@@ -322,6 +387,9 @@ if ($ExpectNoChange) {
 $claudeResultText = if ($Transport -eq 'Mcp') { if ($null -ne $parsed) { [string]$parsed.result_text } else { '' } } elseif ($null -ne $parsed) { [string]$parsed.result } else { '' }
 $claudeUsage = if ($null -ne $parsed) { $parsed.usage } else { $null }
 $claudeModelUsage = if ($null -ne $parsed) { $parsed.modelUsage } else { $null }
+$receiptStdout = Remove-JsonUnsafeControls -Value $stdout
+$receiptStderr = Remove-JsonUnsafeControls -Value $stderr
+$receiptStdoutB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$stdout))
 $accepted = (-not $timedOut) -and ($exitCode -eq 0) -and ($subtype -eq 'success') -and
     (-not [string]::IsNullOrWhiteSpace($stdout)) -and (-not $isError) -and
     ($permissionDenials.Count -eq 0) -and (-not $branchOrHeadChanged) -and
@@ -378,8 +446,12 @@ $result = [ordered]@{
     status_after = $after.status
     changed_paths_after = $after.changed_paths
     staged_paths_after = $after.staged_paths
-    stdout = $stdout
-    stderr = $stderr
+    # Keep the legacy field harmless and transport the authoritative nested
+    # Claude JSON as UTF-8 base64 so terminal control bytes cannot corrupt the
+    # PowerShell-generated receipt JSON.
+    stdout = $null
+    stdout_b64 = $receiptStdoutB64
+    stderr = $receiptStderr
 }
 
 $json = $result | ConvertTo-Json -Depth 12

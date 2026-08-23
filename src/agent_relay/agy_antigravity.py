@@ -22,6 +22,7 @@ from .env import load_dotenv
 
 DEFAULT_AGY_MODEL = "gemini-3.1-pro-high"
 DEFAULT_AGY_EFFORT = "high"
+UNSUPPORTED_ELECTRON_OPTION_WARNING = "not in the list of known options"
 
 
 @dataclass(frozen=True)
@@ -48,9 +49,11 @@ class AgyConfig:
         resolved = (
             executable
             or os.environ.get("AR_AGY_BIN")
-            or shutil.which("agy.exe")
-            or shutil.which("agy")
+            or os.environ.get("SUBAGENT_AGY_BIN")
+            or _preferred_agy_path()
         )
+        if not resolved:
+            resolved = shutil.which("agy.exe") or shutil.which("agy")
         if not resolved:
             raise FileNotFoundError(
                 "Antigravity CLI was not found; install agy or set AR_AGY_BIN"
@@ -120,6 +123,18 @@ def build_agy_prompt(prompt: str) -> str:
     )
 
 
+def _preferred_agy_path() -> str | None:
+    """Prefer the standalone CLI over IDE launchers that reuse the agy name."""
+    candidates = [
+        Path.home() / ".local" / "bin" / "agy",
+        Path.home() / "AppData" / "Local" / "agy" / "bin" / "agy.exe",
+    ]
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
 def _response_text(output: str) -> str:
     values: list[str] = []
     for line in output.splitlines():
@@ -133,6 +148,21 @@ def _response_text(output: str) -> str:
                 if isinstance(value, str) and value.strip():
                     values.append(value.strip())
     return values[-1] if values else output.strip()
+
+
+def _json_envelope(output: str) -> Mapping[str, Any] | None:
+    """Return the documented single-object print-mode response, if present."""
+    try:
+        value = json.loads(output.strip())
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return value if isinstance(value, Mapping) else None
+
+
+def _output_text(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
 
 
 def run_agy(
@@ -150,6 +180,7 @@ def run_agy(
     command = [
         selected.executable,
         "--print",
+        build_agy_prompt(prompt),
         "--output-format",
         "json",
         "--model",
@@ -163,7 +194,6 @@ def run_agy(
     ]
     if selected.sandbox:
         command.append("--sandbox")
-    command.append(build_agy_prompt(prompt))
     started = time.perf_counter()
     try:
         completed = subprocess.run(
@@ -178,26 +208,50 @@ def run_agy(
         )
         output = completed.stdout or ""
         stderr = completed.stderr or ""
-        status = "PASS" if completed.returncode == 0 else "FAILED"
+        envelope = _json_envelope(output)
+        cli_status = envelope.get("status") if envelope else None
+        response = _response_text(output)[-12000:]
+        unsupported_option = UNSUPPORTED_ELECTRON_OPTION_WARNING in stderr
+        if completed.returncode != 0:
+            status = "FAILED"
+            summary = f"Antigravity CLI exited with code {completed.returncode}"
+        elif unsupported_option:
+            status = "FAILED"
+            summary = "Antigravity command was handled by an unsupported Electron launcher"
+        elif not output.strip():
+            status = "FAILED"
+            summary = "Antigravity CLI returned an empty response"
+        elif cli_status != "SUCCESS":
+            status = "FAILED"
+            summary = f"Antigravity CLI returned status {cli_status or 'missing'}"
+        elif not response.strip():
+            status = "FAILED"
+            summary = "Antigravity CLI returned an empty response"
+        else:
+            status = "PASS"
+            summary = "Antigravity specialist completed"
         return AgyResult(
             status=status,
-            summary="Antigravity specialist completed" if status == "PASS" else "Antigravity specialist failed",
-            response=_response_text(output)[-12000:],
+            summary=summary,
+            response=response,
             return_code=completed.returncode,
             duration_seconds=time.perf_counter() - started,
             runtime={
                 "executable": selected.executable,
+                "protocol": "headless-print-json",
                 "model": selected.model,
                 "effort": selected.effort,
                 "mode": selected.mode,
                 "sandbox": selected.sandbox,
                 "credential_mode": "agy-cli-session",
                 "read_only_default": selected.mode == "plan",
+                "cli_status": cli_status,
+                "response_present": bool(response.strip()),
                 "stderr_tail": stderr[-2000:],
             },
         )
     except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+        stdout = _output_text(exc.stdout)
         return AgyResult(
             status="TIMEOUT",
             summary=f"Antigravity timed out after {selected.timeout_seconds:g} seconds",
@@ -206,6 +260,7 @@ def run_agy(
             duration_seconds=time.perf_counter() - started,
             runtime={
                 "executable": selected.executable,
+                "protocol": "headless-print-json",
                 "model": selected.model,
                 "effort": selected.effort,
                 "mode": selected.mode,
@@ -222,6 +277,7 @@ def run_agy(
             duration_seconds=time.perf_counter() - started,
             runtime={
                 "executable": selected.executable,
+                "protocol": "headless-print-json",
                 "model": selected.model,
                 "effort": selected.effort,
                 "credential_mode": "agy-cli-session",

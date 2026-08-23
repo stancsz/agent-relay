@@ -353,3 +353,10 @@ Acceptance evidence:
 The roadmap is successful when a developer can submit a bounded job from PC A, have a compatible agent on PC B execute it under explicit policy, lose and regain the connection, and obtain a verified artifact/receipt without duplicate side effects or ambiguous success.
 
 The supporting PM artifacts are in [`docs/pm/`](docs/pm/). Engineering benchmark controls remain in [`GOAL.md`](GOAL.md) and [`EVALS.md`](EVALS.md); they should be updated only when implementation and evidence change.
+<!-- goal-loop:managed:start -->
+## Goal Loop Roadmap
+
+| roadmap_id | outcome | dependencies | status | evidence_gate |
+|---|---|---|---|---|
+| R-AGY-CLI-001 | Replace the Electron-oriented AGY adapter with the supported standalone Antigravity CLI print/JSON path, add fail-closed parsing/tests/docs, verify a live response, and ship the complete fix to the configured remote | none | done | E-AGY-001 |
+<!-- goal-loop:managed:end -->

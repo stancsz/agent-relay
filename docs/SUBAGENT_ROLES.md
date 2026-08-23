@@ -43,7 +43,7 @@ explicit.
   GPT-5.6 Sol is the frontier model tier and supports high reasoning effort;
   the lane uses the logged-in Codex CLI session rather than an API key.
 
-## Local confirmation — 2026-08-20
+## Historical local confirmation — 2026-08-20
 
 These are fresh local probes, not claims inferred from documentation:
 
@@ -54,8 +54,22 @@ These are fresh local probes, not claims inferred from documentation:
 | `codex-review` | BLOCKED in this environment | The read-only adapter reached `codex exec review`, but Codex CLI 0.87.0 rejected `gpt-5.6-luna` as requiring a newer CLI; it also reported the configured `127.0.0.1:9000/mcp` endpoint refused the connection. No fallback or model downgrade is allowed. |
 | `agy-antigravity` | BLOCKED by permission prompt | `agy` was installed and listed the configured Gemini model. The plan-mode probe reached the CLI, but its permission check for `agy --help` was denied. The adapter must remain fail-closed; grant the CLI permission interactively before treating the lane as live. |
 
-The local result changes routing confidence, not safety boundaries: Qwen is the
-only lane currently confirmed end-to-end for this checkout; Claude is the best
-authenticated implementation candidate; Codex remains the independent QA
-target once its CLI is upgraded; and AGY remains a Google-specialist planner
-until its permission-gated smoke passes.
+At that time, the local result changed routing confidence, not safety
+boundaries. The current AGY readiness evidence is recorded below.
+
+## Current standalone AGY CLI confirmation — 2026-08-22
+
+The IDE-provided `agy` shim was not a headless agent protocol: unsupported
+print/model flags were forwarded to Electron and could exit 0 with empty
+stdout. The official standalone CLI is now installed at `~/.local/bin/agy`
+(version 1.1.18) and is preferred by the adapter.
+
+The supported smoke is:
+
+~~~text
+agy -p 'Reply with exactly AGY_CLI_OK.' --output-format json --print-timeout 30s
+~~~
+
+The adapter accepts the run only when the JSON envelope reports `SUCCESS` and
+contains a nonempty `response`; nonzero exit, missing/empty output, non-success
+status, timeout, and Electron unsupported-option warnings remain failures.

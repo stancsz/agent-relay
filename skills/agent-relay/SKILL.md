@@ -283,10 +283,14 @@ Ask the Google-stack specialist in plan mode:
 agent-relay ask --lane agy-antigravity --repo . --prompt "Review Firebase and Android integration risks." --json
 ```
 
-The AGY adapter uses the installed `agy` CLI session and fails explicitly when
-the CLI, model, or account is unavailable. `accept-edits` is exposed for future
-bounded experiments, but the canonical lane defaults to plan mode and does not
-accept AGY edits as proof.
+The AGY adapter uses the standalone `agy` CLI headless print protocol, not the
+Antigravity IDE launcher. Install the CLI with
+`curl -fsSL https://antigravity.google/cli/install.sh | bash`, then validate it
+with `agy -p "Reply with exactly AGY_CLI_OK." --output-format json` from a fresh
+login shell. The adapter fails explicitly when the CLI, model, account, JSON
+status, or response is unavailable; a zero exit with empty output is never a
+pass. `accept-edits` is exposed for bounded experiments, but the canonical lane
+defaults to plan mode and does not accept AGY edits as proof.
 
 The Codex lane deliberately does not accept an API key. It invokes the installed
 `codex exec review` command, so the user's existing Codex login/session is the

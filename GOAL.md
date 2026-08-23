@@ -452,3 +452,25 @@ This project is not:
 - a generic chatbot
 - an architecture agent
 - an unlimited recursive agent loop
+
+<!-- goal-loop:managed:start -->
+## Goal Loop Control
+
+- goal_id: GL-agy-cli-delegation
+- goal_revision: 1
+- status: complete
+- roadmap_path: ROADMAP.md
+- roadmap_item_id: R-AGY-CLI-001
+- eval_path: EVAL.md
+- active_lease_until: null
+- last_checkpoint: CP-002
+- remaining_criteria: none
+
+## Claude Dispatch Ledger
+
+| dispatch_id | parent_id | role | instance_id | job_id | roadmap_id | scope | status | started_at | last_seen_at | checkpoint |
+|---|---|---|---|---|---|---|---|---|---|---|
+| GL-agy-cli-delegation-O1 | codex | orchestrator | a2a-GL-agy-cli-delegation-O1-42882c0d | GL-agy-cli-delegation-O1-42882c0d6f36 | R-AGY-CLI-001 | coordinate standalone AGY CLI adapter, tests, docs, and verification | failed | 2026-08-22T01:46:11Z | 2026-08-22T01:46:11Z | CP-000 |
+| GL-agy-cli-delegation-O2 | codex | orchestrator | a2a-GL-agy-cli-delegation-O2-24fafbcb | GL-agy-cli-delegation-O2-24fafbcbc82a | R-AGY-CLI-001 | coordinate standalone AGY CLI adapter, tests, docs, and verification with configured worker/verifier types | failed | 2026-08-22T01:48:21Z | 2026-08-22T01:48:21Z | CP-000 |
+| GL-agy-cli-delegation-O3 | codex | orchestrator | a2a-GL-agy-cli-delegation-O3-2e1512ba | GL-agy-cli-delegation-O3-2e1512ba2294 | R-AGY-CLI-001 | coordinate standalone AGY CLI adapter, tests, docs, project agent definitions, and verification | blocked | 2026-08-22T01:50:47Z | 2026-08-22T01:50:47Z | CP-000 |
+<!-- goal-loop:managed:end -->

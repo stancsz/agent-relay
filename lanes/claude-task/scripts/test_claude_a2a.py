@@ -359,6 +359,181 @@ def test_native_capability_fallback() -> None:
         shutil.rmtree(workspace, ignore_errors=True)
 
 
+def test_cli_verifier_cannot_mutate_caller_workspace() -> None:
+    """A verifier's shell-side write must stay inside its disposable copy."""
+    workspace = Path(tempfile.mkdtemp(prefix="cli-verifier-isolation-"))
+    try:
+        target = workspace / "target.txt"
+        target.write_text("stable\n", encoding="utf-8")
+        git("init", "--quiet", cwd=workspace)
+        git("config", "user.email", "a2a@example.invalid", cwd=workspace)
+        git("config", "user.name", "a2a-test", cwd=workspace)
+        git("add", "target.txt", cwd=workspace)
+        git("commit", "--quiet", "-m", "init", cwd=workspace)
+
+        state = A2AState(Namespace(
+            workspace_root=str(workspace), auth_token="lan-secret",
+            worker_agent_type=None, verifier_agent_type=None,
+            timeout_seconds=None, state_dir=None,
+        ))
+        task = build_task(
+            task_id="cli-verifier-isolation",
+            target_role="verifier",
+            operation="verify",
+            target_paths=["target.txt"],
+            objective="Inspect the target without changing the caller workspace.",
+            acceptance_criteria=["The caller target remains stable."],
+            constraints=["Read-only verifier."],
+            inputs=[],
+            expected_change=False,
+        )
+        seen_workspaces: list[Path] = []
+
+        def fake_delegate(verifier_workspace: Path, *_args, **_kwargs):
+            seen_workspaces.append(verifier_workspace)
+            (verifier_workspace / "target.txt").write_text("mutated by verifier\n", encoding="utf-8")
+            return ({"accepted": True, "unexpected_worktree_change": True, "branch_or_head_changed": False}, 0)
+
+        state._run_cli_delegate_once = fake_delegate  # type: ignore[method-assign]
+        result = state._run_cli_fallback_locked(task, workspace)
+
+        assert result["status"] == "failed", result
+        assert result["server_receipt"]["verifier_clean"] is False, result
+        assert target.read_text(encoding="utf-8") == "stable\n"
+        assert seen_workspaces and seen_workspaces[0] != workspace
+        assert not seen_workspaces[0].exists()
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
+def test_cli_verifier_empty_source_set_does_not_clone_dirty_workspace() -> None:
+    """An explicit empty verifier source set must stay an empty temp repo."""
+    workspace = Path(tempfile.mkdtemp(prefix="cli-verifier-empty-sources-"))
+    try:
+        (workspace / "unrelated-large-tree-marker.txt").write_text("caller-only\n", encoding="utf-8")
+        with isolated_cli_verifier_workspace(workspace, include_paths=[]) as verifier_workspace:
+            assert (verifier_workspace / ".git").is_dir()
+            assert not (verifier_workspace / "unrelated-large-tree-marker.txt").exists()
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
+def test_team_fallback_verifier_copies_objective_sources() -> None:
+    """Team fallback verifiers receive the explicitly named source files."""
+    workspace = Path(tempfile.mkdtemp(prefix="cli-team-verifier-sources-"))
+    try:
+        target = workspace / "target.txt"
+        source = workspace / "docs" / "input.md"
+        target.write_text("stable\n", encoding="utf-8")
+        source.parent.mkdir(parents=True)
+        source.write_text("source evidence\n", encoding="utf-8")
+        git("init", "--quiet", cwd=workspace)
+        git("config", "user.email", "a2a@example.invalid", cwd=workspace)
+        git("config", "user.name", "a2a-test", cwd=workspace)
+        git("add", "-A", cwd=workspace)
+        git("commit", "--quiet", "-m", "init", cwd=workspace)
+
+        state = A2AState(Namespace(
+            workspace_root=str(workspace), auth_token="lan-secret",
+            worker_agent_type=None, verifier_agent_type=None,
+            timeout_seconds=None, state_dir=None,
+        ))
+        task = build_task(
+            task_id="cli-team-verifier-sources",
+            target_role="team",
+            operation="team",
+            target_paths=["target.txt"],
+            objective=(
+                "Read target.txt and docs/input.md only; verify the declared source "
+                "docs/input.md is present in the bounded verifier workspace."
+            ),
+            acceptance_criteria=["The verifier can read the named source."],
+            constraints=["Read-only verifier."],
+            inputs=[],
+            team={"name": "source-copy", "members": [
+                {"name": "writer", "role": "worker", "objective": "No-op."},
+                {"name": "reviewer", "role": "verifier", "objective": "Check docs/input.md."},
+            ]},
+            expected_change=False,
+        )
+        verifier_workspaces: list[Path] = []
+
+        def fake_delegate(delegate_workspace: Path, *_args, **_kwargs):
+            if delegate_workspace != workspace:
+                verifier_workspaces.append(delegate_workspace)
+                assert (delegate_workspace / "docs" / "input.md").is_file()
+            return ({
+                "accepted": True,
+                "unexpected_worktree_change": False,
+                "branch_or_head_changed": False,
+                "stdout": "bounded result",
+            }, 0)
+
+        state._run_cli_delegate_once = fake_delegate  # type: ignore[method-assign]
+        result = state._run_cli_fallback_locked(task, workspace)
+
+        assert result["status"] == "done", result
+        assert result["server_receipt"]["verifier_isolated"] is True, result
+        assert verifier_workspaces and not verifier_workspaces[0].exists()
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
+def test_cli_delegate_timeout_does_not_wait_for_orphaned_pipes() -> None:
+    """A dead child with inherited pipes must produce a bounded timeout receipt."""
+    workspace = Path(tempfile.mkdtemp(prefix="cli-timeout-pipes-"))
+
+    class _Stream:
+        def close(self) -> None:
+            return None
+
+    class _HungProcess:
+        pid = 54321
+
+        def __init__(self) -> None:
+            self.stdout = _Stream()
+            self.stderr = _Stream()
+            self.killed = False
+
+        def poll(self):
+            return 1 if self.killed else None
+
+        @property
+        def returncode(self):
+            return 1 if self.killed else None
+
+        def kill(self) -> None:
+            self.killed = True
+
+        def communicate(self, timeout=None):
+            raise subprocess.TimeoutExpired(["fake-claude"], timeout)
+
+    real_popen = subprocess.Popen
+    real_run = subprocess.run
+    fake_process = _HungProcess()
+    subprocess.Popen = lambda *_args, **_kwargs: fake_process
+    subprocess.run = lambda *_args, **_kwargs: subprocess.CompletedProcess([], 0)
+    started = time.monotonic()
+    try:
+        state = A2AState(Namespace(
+            workspace_root=str(workspace), auth_token=None,
+            worker_agent_type=None, verifier_agent_type=None,
+            timeout_seconds=-100, state_dir=str(workspace / "state"),
+        ))
+        receipt, returncode = state._run_cli_delegate_once(
+            workspace, "Read the target and return a bounded result.", [],
+            allowed_tools="Read", expected_change=False,
+        )
+    finally:
+        subprocess.Popen = real_popen
+        subprocess.run = real_run
+        shutil.rmtree(workspace, ignore_errors=True)
+    assert time.monotonic() - started < 5, "timeout cleanup exceeded the bounded test window"
+    assert returncode == 1
+    assert receipt.get("timed_out") is True, receipt
+    assert receipt.get("accepted") is False, receipt
+
+
 def test_client_disconnect_classification() -> None:
     assert is_client_disconnect(ConnectionAbortedError(10053, "connection aborted"))
     assert is_client_disconnect(BrokenPipeError())

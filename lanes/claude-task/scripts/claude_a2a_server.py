@@ -9,11 +9,14 @@ It is loopback-only by default. LAN binding requires an auth token.
 from __future__ import annotations
 
 import argparse
+import base64
+from contextlib import contextmanager
 import hashlib
 import hmac
 import json
 import os
 import shutil
+import stat
 import subprocess
 import ssl
 import sys
@@ -213,11 +216,14 @@ def build_cli_delegate_command(
     target_paths: list[str],
     expected_change: bool | None,
     timeout_seconds: int | None,
+    agent_type: str | None = None,
 ) -> list[str]:
     """Build a PowerShell fallback command without positional path leakage."""
 
     command = [
-        "powershell.exe", "-NoProfile", "-File", str(delegate),
+        # Bypass policy only for this bounded child invocation; do not change
+        # the user's or machine-wide PowerShell policy.
+        "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(delegate),
         "-WorkingDirectory", str(workspace),
         "-PromptFile", str(prompt_path),
         "-Transport", "Cli",
@@ -230,9 +236,100 @@ def build_cli_delegate_command(
         command.append("-ExpectChange")
     elif expected_change is False:
         command.append("-ExpectNoChange")
+    if agent_type:
+        command.extend(["-CliAgentType", agent_type])
     if timeout_seconds is not None:
         command.extend(["-TimeoutSeconds", str(timeout_seconds)])
     return command
+
+@contextmanager
+def isolated_cli_verifier_workspace(
+    workspace: Path,
+    include_paths: list[str] | None = None,
+    heartbeat: Any = None,
+):
+    """Yield a disposable copy for a CLI verifier session.
+
+    Claude's ``Bash`` tool is intentionally available to verifiers so they can
+    run read-only evidence commands. The tool boundary is advisory, though: a
+    verifier can still invoke a script that writes files. Running that session
+    in the caller's dirty checkout would make a rejected verifier capable of
+    changing user work. The copy is initialized as a temporary Git repository
+    so the existing receipt/scope checks remain meaningful.
+    """
+    temp_root = Path(tempfile.mkdtemp(prefix="claude-a2a-verifier-"))
+    verifier_workspace = temp_root / "workspace"
+    try:
+        if heartbeat:
+            heartbeat()
+        # ``[]`` is an explicit empty source set, not a request to clone the
+        # caller.  Direct/team verifier packets with no target or input paths
+        # otherwise fall through to the full dirty-worktree copy and can spend
+        # the entire bounded setup window staging unrelated user files.
+        if include_paths is not None:
+            verifier_workspace.mkdir(parents=True, exist_ok=True)
+            for relative in dict.fromkeys(include_paths):
+                source = workspace / relative
+                destination = verifier_workspace / relative
+                if source.is_file():
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, destination)
+                elif source.is_dir():
+                    shutil.copytree(source, destination, dirs_exist_ok=True)
+                if heartbeat:
+                    heartbeat()
+        else:
+            shutil.copytree(
+                workspace,
+                verifier_workspace,
+                ignore=shutil.ignore_patterns(
+                    ".git",
+                    ".env",
+                    ".env.*",
+                    "__pycache__",
+                    ".pytest_cache",
+                    ".mypy_cache",
+                    ".ruff_cache",
+                ),
+            )
+            if heartbeat:
+                heartbeat()
+        for args in (
+            ["init", "--quiet"],
+            ["config", "user.name", "Agent Relay"],
+            ["config", "user.email", "agent-relay@example.invalid"],
+            ["add", "-A"],
+            ["commit", "--quiet", "--allow-empty", "-m", "verifier baseline"],
+        ):
+            process = subprocess.run(
+                ["git", *args],
+                cwd=verifier_workspace,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                capture_output=True,
+                timeout=30,
+            )
+            if process.returncode != 0:
+                detail = (process.stderr or process.stdout).strip()[:500]
+                raise RuntimeError(f"temporary verifier git setup failed: {detail}")
+            if heartbeat:
+                heartbeat()
+        yield verifier_workspace
+    finally:
+        def remove_readonly(function, path, _exc_info):
+            try:
+                os.chmod(path, stat.S_IWRITE)
+                function(path)
+            except OSError:
+                pass
+
+        try:
+            shutil.rmtree(temp_root, onerror=remove_readonly)
+        except OSError:
+            # Cleanup is best effort; the verifier has already run outside
+            # the caller workspace, so a locked temporary artifact is safe.
+            pass
 
 
 class A2AState:
@@ -588,7 +685,11 @@ class A2AState:
             self.auto_cli_fallback
             and result.get("status") in {"blocked", "failed"}
             and is_native_capability_failure(native_error)
-            and receipt.get("worktree_changed") is False
+            # `worktree_changed` includes pre-existing user edits.  A native
+            # capability failure is safe to fall back only when this attempt
+            # changed no declared target path and did not move HEAD.
+            and not result.get("changed_paths")
+            and receipt.get("before_head") == receipt.get("after_head")
         )
         if not safe_to_retry:
             return result
@@ -682,14 +783,21 @@ class A2AState:
             if before["target_fingerprints"].get(path) != after["target_fingerprints"].get(path)
         )
         new_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]) | set(target_changed_paths))
+        new_status_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]))
         worktree_changed = before["change_fingerprint"] != after["change_fingerprint"]
         cleanup_ok = not mcp_receipt.get("cleanup_error")
         mcp_ok = bool(mcp_receipt.get("accepted_by_transport")) and process.returncode == 0 and cleanup_ok
         team_complete = not team_mode or bool(mcp_receipt.get("team_complete"))
         verifier_requested = task["target_role"] == "verifier" or any(member["role"] == "verifier" for member in task.get("team", {}).get("members", []))
-        verifier_clean = not verifier_requested or not worktree_changed
+        verifier_clean = not verifier_requested or (
+            not target_changed_paths
+            and not new_status_paths
+            and before["head"] == after["head"]
+        )
         expected_change = task.get("expected_change")
-        change_ok = expected_change is None or (worktree_changed == expected_change)
+        scope_changed = bool(target_changed_paths)
+        scope_unchanged = not scope_changed and not new_status_paths and before["head"] == after["head"]
+        change_ok = expected_change is None or (scope_changed if expected_change else scope_unchanged)
         if not mcp_ok or not team_complete:
             status = "blocked" if is_native_capability_failure(mcp_receipt.get("protocol_error")) else "failed"
         elif not verifier_clean or not change_ok:
@@ -747,6 +855,7 @@ class A2AState:
         *,
         allowed_tools: str,
         expected_change: bool | None,
+        agent_type: str | None = None,
         cancel_event: threading.Event | None = None,
         heartbeat: Any = None,
     ) -> tuple[dict[str, Any], int]:
@@ -765,6 +874,7 @@ class A2AState:
             target_paths=target_paths,
             expected_change=expected_change,
             timeout_seconds=self.timeout_seconds,
+            agent_type=agent_type,
         )
 
         process = subprocess.Popen(
@@ -778,32 +888,75 @@ class A2AState:
             cwd=str(workspace),
         )
         communication: dict[str, str] = {"stdout": "", "stderr": ""}
-
-        def communicate() -> None:
-            stdout, stderr = process.communicate()
-            communication["stdout"] = stdout
-            communication["stderr"] = stderr
-
-        communication_thread = threading.Thread(target=communicate, daemon=True)
-        communication_thread.start()
-        last_heartbeat = 0.0
         started = time.monotonic()
-        while communication_thread.is_alive():
-            now = time.monotonic()
-            if heartbeat and now - last_heartbeat >= 1:
-                heartbeat()
-                last_heartbeat = now
-            if cancel_event and cancel_event.is_set() and process.poll() is None:
-                if os.name == "nt":
-                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, text=True)
-                else:
-                    process.terminate()
-            if self.timeout_seconds is not None and now - started > self.timeout_seconds + 15 and process.poll() is None:
-                if os.name == "nt":
-                    subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, text=True)
-                else:
-                    process.terminate()
-            communication_thread.join(timeout=0.25)
+
+        def force_stop() -> None:
+            """Stop the CLI process without allowing cleanup to hang forever."""
+            if process.poll() is not None:
+                return
+            if os.name == "nt":
+                try:
+                    subprocess.run(
+                        ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                        check=False,
+                    )
+                except (OSError, subprocess.SubprocessError):
+                    pass
+            if process.poll() is None:
+                try:
+                    process.kill()
+                except OSError:
+                    pass
+
+        heartbeat_stop = threading.Event()
+
+        def heartbeat_loop() -> None:
+            while not heartbeat_stop.is_set():
+                if heartbeat:
+                    heartbeat()
+                heartbeat_stop.wait(1)
+
+        heartbeat_thread = threading.Thread(target=heartbeat_loop, daemon=True)
+        heartbeat_thread.start()
+        stop_requested = False
+        try:
+            while True:
+                cancelled = bool(cancel_event and cancel_event.is_set())
+                timed_out = self.timeout_seconds is not None and time.monotonic() - started > self.timeout_seconds + 15
+                if cancelled or timed_out:
+                    stop_requested = True
+                    force_stop()
+                    # A descendant can retain stdout/stderr after the parent
+                    # has exited. Give communicate a short, bounded chance to
+                    # drain them, then close our handles and return a timeout
+                    # receipt instead of leaving the durable job running.
+                    try:
+                        stdout, stderr = process.communicate(timeout=2)
+                        communication["stdout"] = stdout
+                        communication["stderr"] = stderr
+                    except subprocess.TimeoutExpired as exc:
+                        communication["stdout"] = str(getattr(exc, "output", "") or "")
+                        communication["stderr"] = str(getattr(exc, "stderr", "") or "")
+                        for stream in (process.stdout, process.stderr):
+                            if stream is not None:
+                                try:
+                                    stream.close()
+                                except OSError:
+                                    pass
+                    break
+                try:
+                    stdout, stderr = process.communicate(timeout=1)
+                    communication["stdout"] = stdout
+                    communication["stderr"] = stderr
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+        finally:
+            heartbeat_stop.set()
+            heartbeat_thread.join(timeout=2)
 
         returncode = process.returncode if process.returncode is not None else 1
         receipt: dict[str, Any] = {}
@@ -832,6 +985,10 @@ class A2AState:
         if cancel_event and cancel_event.is_set():
             receipt["accepted"] = False
             receipt["json_parse_error"] = "job cancellation requested"
+        if stop_requested and not receipt.get("timed_out"):
+            receipt["accepted"] = False
+            receipt["timed_out"] = True
+            receipt.setdefault("json_parse_error", "CLI delegate exceeded the bounded timeout or was cancelled")
         receipt.setdefault("stderr", communication["stderr"])
         shutil.rmtree(temp_root, ignore_errors=True)
         return receipt, returncode
@@ -839,54 +996,125 @@ class A2AState:
     def _run_cli_fallback_locked(self, task: dict[str, Any], workspace: Path, *, cancel_event: threading.Event | None = None, heartbeat: Any = None) -> dict[str, Any]:
         """Run bounded CLI role(s) when native Agent Teams are unavailable.
 
-        A worker/verifier team is represented by two fresh CLI sessions in
-        sequence.  This keeps the verifier read-only and independent while
-        making the receipt explicit that no native team ran.
+        A worker/verifier team is represented by fresh CLI sessions in
+        sequence, one for every declared worker and then one read-only
+        verifier. This preserves disjoint worker scope even when native Agent
+        Teams cannot be spawned, while making the receipt explicit that no
+        native team ran.
         """
         before = git_snapshot(workspace, list(task["workspace"]["target_paths"]))
         profile_context = self.profile_context(task)
         target_paths = list(task["workspace"]["target_paths"])
         team_members = task.get("team", {}).get("members", []) if task["target_role"] == "team" else []
-        worker_member = next((member for member in team_members if member.get("role") == "worker"), None)
+        worker_members = [member for member in team_members if member.get("role") == "worker"]
         verifier_member = next((member for member in team_members if member.get("role") == "verifier"), None)
-        run_worker = task["target_role"] == "worker" or worker_member is not None
+        if task["target_role"] == "worker" and not worker_members:
+            worker_members = [{"name": "worker", "role": "worker", "objective": task["objective"]}]
+        run_worker = bool(worker_members)
         run_verifier = task["target_role"] == "verifier" or verifier_member is not None
         receipts: list[tuple[str, dict[str, Any], int]] = []
+        verifier_isolated = False
 
-        if run_worker:
+        assigned_paths: set[str] = set()
+        for index, worker_member in enumerate(worker_members):
             worker_objective = task["objective"]
-            if worker_member:
-                worker_objective += f"\n\nWorker member objective:\n{worker_member['objective']}"
-            worker_task = {**task, "target_role": "worker", "objective": worker_objective}
+            worker_objective += f"\n\nWorker member objective:\n{worker_member.get('objective', '')}"
+            explicit_paths = worker_member.get("target_paths")
+            if explicit_paths is None:
+                explicit_paths = worker_member.get("workspace", {}).get("target_paths")
+            if isinstance(explicit_paths, list):
+                worker_paths = [path for path in explicit_paths if path in target_paths]
+            else:
+                searchable = json.dumps(worker_member, ensure_ascii=False)
+                worker_paths = [
+                    path for path in target_paths
+                    if path in searchable or Path(path).name in searchable
+                ]
+            if not worker_paths:
+                remaining_paths = [path for path in target_paths if path not in assigned_paths]
+                worker_paths = remaining_paths[:1] if len(worker_members) > 1 and remaining_paths else target_paths
+            assigned_paths.update(worker_paths)
+            worker_workspace = {**task["workspace"], "target_paths": worker_paths}
+            worker_task = {
+                **task,
+                "workspace": worker_workspace,
+                "target_role": "worker",
+                "objective": worker_objective,
+            }
             receipt, returncode = self._run_cli_delegate_once(
                 workspace,
                 render_prompt(worker_task, profile_context),
-                target_paths,
+                worker_paths,
                 allowed_tools="Read,Edit,Write",
                 expected_change=task.get("expected_change"),
+                agent_type=self.worker_agent_type,
                 cancel_event=cancel_event,
                 heartbeat=heartbeat,
             )
-            receipts.append(("worker", receipt, returncode))
+            member_name = str(worker_member.get("name") or f"worker-{index + 1}")
+            receipts.append((f"worker:{member_name}", receipt, returncode))
 
-        worker_receipt = receipts[-1][1] if receipts and receipts[-1][0] == "worker" else None
-        worker_ok = bool(worker_receipt and worker_receipt.get("accepted") and receipts[-1][2] == 0)
+        worker_receipts = [receipt for role, receipt, _ in receipts if role.startswith("worker:")]
+        worker_ok = bool(worker_receipts) and all(
+            bool(receipt.get("accepted")) and returncode == 0
+            for (role, receipt, returncode) in receipts
+            if role.startswith("worker:")
+        )
         if run_verifier and (not run_worker or worker_ok):
             verifier_objective = task["objective"]
             if verifier_member:
-                verifier_objective += f"\n\nVerifier member objective:\n{verifier_member['objective']}"
-            if worker_receipt:
-                verifier_objective += "\n\nWorker receipt (inspect, do not trust blindly):\n" + json.dumps(worker_receipt, ensure_ascii=False)[:4000]
+                verifier_objective += f"\n\nVerifier member objective:\n{verifier_member.get('objective', '')}"
+            if worker_receipts:
+                verifier_objective += "\n\nWorker receipts (inspect, do not trust blindly):\n" + json.dumps(worker_receipts, ensure_ascii=False)[:8000]
             verifier_task = {**task, "target_role": "verifier", "objective": verifier_objective}
-            receipt, returncode = self._run_cli_delegate_once(
-                workspace,
-                render_prompt(verifier_task, profile_context),
-                target_paths,
-                allowed_tools="Read,Glob,Grep",
-                expected_change=False,
-                cancel_event=cancel_event,
-                heartbeat=heartbeat,
-            )
+            verifier_include_paths = list(target_paths)
+            if run_verifier:
+                # Bounded verifier prompts name their exact source files. Copy
+                # only those paths instead of cloning a dirty novel checkout.
+                # This applies to both direct verifier tasks and team tasks
+                # whose fallback verifier runs after the worker sequence.
+                # Keep the full-copy fallback for older packets without a
+                # recognizable file list.
+                input_paths = [
+                    item["path"]
+                    for item in task.get("inputs", [])
+                    if isinstance(item, dict) and isinstance(item.get("path"), str)
+                ]
+                verifier_include_paths.extend(input_paths)
+                objective_paths = re.findall(
+                    r"(?<![A-Za-z0-9_./-])(?:seasons|docs|tools|engine)/[^\s,;`\"']+\.md",
+                    str(task.get("objective", "")),
+                )
+                verifier_include_paths.extend(objective_paths)
+            try:
+                with isolated_cli_verifier_workspace(
+                    workspace,
+                    verifier_include_paths,
+                    heartbeat=heartbeat,
+                ) as verifier_workspace:
+                    verifier_isolated = True
+                    receipt, returncode = self._run_cli_delegate_once(
+                        verifier_workspace,
+                        render_prompt(verifier_task, profile_context),
+                        target_paths,
+                        # Verifiers need shell-level read-only evidence commands
+                        # (git/grep/head/sha256sum). Edit/Write remain
+                        # unavailable, and the post-run scope gate rejects any
+                        # mutation in the disposable verifier workspace.
+                        allowed_tools="Read,Glob,Grep,Bash",
+                        expected_change=False,
+                        agent_type=self.verifier_agent_type,
+                        cancel_event=cancel_event,
+                        heartbeat=heartbeat,
+                    )
+            except Exception as exc:
+                receipt = {
+                    "accepted": False,
+                    "unexpected_worktree_change": False,
+                    "branch_or_head_changed": False,
+                    "json_parse_error": f"verifier isolation failed: {exc}",
+                }
+                returncode = 1
             receipts.append(("verifier", receipt, returncode))
 
         after = git_snapshot(workspace, target_paths)
@@ -895,18 +1123,30 @@ class A2AState:
             if before["target_fingerprints"].get(path) != after["target_fingerprints"].get(path)
         )
         new_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]) | set(target_changed_paths))
+        new_status_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]))
         worktree_changed = before["change_fingerprint"] != after["change_fingerprint"]
         run_ok = all(bool(receipt.get("accepted")) and returncode == 0 for _, receipt, returncode in receipts)
         verifier_receipt = next((receipt for role, receipt, _ in receipts if role == "verifier"), None)
-        verifier_clean = not run_verifier or bool(verifier_receipt and verifier_receipt.get("repo_status_unchanged") and not verifier_receipt.get("unexpected_worktree_change"))
+        verifier_clean = not run_verifier or bool(
+            verifier_receipt
+            and not verifier_receipt.get("unexpected_worktree_change")
+            and not verifier_receipt.get("branch_or_head_changed")
+        )
         expected_change = task.get("expected_change")
-        change_ok = expected_change is None or worktree_changed == expected_change
+        scope_changed = bool(target_changed_paths)
+        scope_unchanged = not scope_changed and not new_status_paths and before["head"] == after["head"]
+        change_ok = expected_change is None or (scope_changed if expected_change else scope_unchanged)
         cli_ok = run_ok and verifier_clean and change_ok
         status = "done" if cli_ok else "failed"
 
         output_parts = []
         for role, receipt, _ in receipts:
             nested_stdout = receipt.get("stdout") if isinstance(receipt, dict) else None
+            if not nested_stdout and isinstance(receipt, dict) and receipt.get("stdout_b64"):
+                try:
+                    nested_stdout = base64.b64decode(receipt["stdout_b64"], validate=True).decode("utf-8", errors="replace")
+                except (ValueError, UnicodeError):
+                    nested_stdout = ""
             result_text = ""
             if isinstance(nested_stdout, str) and nested_stdout.strip():
                 try:
@@ -939,6 +1179,7 @@ class A2AState:
                 "stdout_parse_warning": next((receipt.get("stdout_parse_warning") for _, receipt, _ in receipts if receipt.get("stdout_parse_warning")), None),
                 "accepted_by_transport": run_ok,
                 "verifier_clean": verifier_clean,
+                "verifier_isolated": verifier_isolated,
                 "change_expectation_satisfied": change_ok,
                 "worktree_changed": worktree_changed,
                 "before_head": before["head"],

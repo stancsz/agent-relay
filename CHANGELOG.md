@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased — 2026-08-21
+
+- Hardened the Windows CLI fallback for restrictive execution policies, direct
+  `claude.exe` resolution, JSON target-path forwarding, and minimal PowerShell
+  hosts without `Get-FileHash`.
+- Preserved disjoint team semantics in fallback mode by running every declared
+  worker with member-scoped target paths before the read-only verifier.
+- Relaxed verifier status checks to distinguish pre-existing dirty-worktree
+  entries from new changes introduced during verification.
+- Added the `CLAUDE_A2A_TIMEOUT_SECONDS` launcher override so long-running CLI
+  fallback lanes can select a bounded per-process timeout without editing the
+  launcher or relying on a hidden hard-coded value.
+- Fixed CLI verifier isolation for explicit empty source sets: create an empty
+  temporary Git baseline instead of cloning and staging the caller's entire
+  dirty worktree, and allow an empty baseline commit. This keeps no-input
+  read-only verifier and native-team fallback smoke tasks within their setup
+  bound.
+
 ## 0.1.0 — 2026-08-20
 
 - Renamed the project identity to **Agent Relay**.

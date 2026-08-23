@@ -83,6 +83,18 @@ powershell -NoProfile -File `
 
 The daemon starts no Claude process at launch. Every execution gets a fresh `claude.cmd mcp serve` session with the selected workspace as its working directory. Asynchronous jobs continue after the submitting client disconnects; state stays outside the repository.
 
+For long-running CLI fallback work, set `CLAUDE_A2A_TIMEOUT_SECONDS` before
+launching the host (or pass `-TimeoutSeconds` explicitly). This keeps the
+timeout scoped to that relay process; for example, use `2400` for a bounded
+multi-chapter editorial pass:
+
+```powershell
+$env:CLAUDE_A2A_TIMEOUT_SECONDS = '2400'
+powershell -NoProfile -File `
+  "<skill-root>\scripts\start_claude_a2a_server.ps1" `
+  -WorkspaceRoot "C:\path\to\repo"
+```
+
 ## Health and capability checks
 
 Relay health is cheap and does not start Claude:
@@ -147,7 +159,7 @@ powershell -NoProfile -File `
   -AuthToken $env:CLAUDE_A2A_AUTH_TOKEN
 ```
 
-The client exits zero only for a validated `done` result. A missing native team tool, failed teammate result, malformed receipt, unexpected verifier change, or unsatisfied change expectation remains a failure. A `cli-fallback` receipt is a bounded CLI role execution (one worker, or sequential worker/verifier sessions), not proof that a native team ran.
+The client exits zero only for a validated `done` result. A missing native team tool, failed teammate result, malformed receipt, unexpected verifier change, or unsatisfied change expectation remains a failure. A `cli-fallback` receipt is a bounded CLI role execution (all declared workers in sequence, followed by a read-only verifier), not proof that a native team ran. Worker members may declare `target_paths`; each fallback session receives only its member-scoped paths.
 
 For long-running work, submit the same task with `-Async`. Poll `/a2a/jobs/{job_id}`, cancel with `/a2a/jobs/{job_id}/cancel`, or resume an interrupted/failed job with `/a2a/jobs/{job_id}/resume`. Profile memory and skill snippets are opt-in and bounded; no transcript or full context is persisted.
 
@@ -163,18 +175,17 @@ If the capability probe succeeds but a team smoke fails, inspect the returned MC
 
 ### Current Windows capability boundary
 
-On the local Claude Code 2.1.233 installation, a team-mode MCP session exposes `Agent` but
-does not expose `TaskCreate`, `TaskList`, or `TaskUpdate`, so a native team cannot complete.
-The preceding 2.1.232 installation exposed the team tools but rejected its empty/default
-agent registry. The capability probe and native smoke must report either condition as a
-native-runtime limitation. The fallback keeps work moving through the explicit
-`claude --print` adapter, but its receipt remains distinguishable from `native-mcp`; a
-CLI role execution (one worker, or sequential worker/verifier sessions) cannot be used
-as evidence that a native team actually ran.
+On the observed Claude Code 2.1.239 installation, a team-mode MCP session exposes
+`Agent` and the native team tools, but spawning a configured worker can still fail with
+`Agent type '…' not found. Available agents: none`. Capability probes therefore are not
+proof that a native teammate can execute. The fallback keeps work moving through the
+explicit `claude --print` adapter, but its receipt remains distinguishable from
+`native-mcp`; sequential CLI role execution cannot be used as evidence that a native
+team actually ran.
 
 ## Files
 
-- `scripts/a2a_protocol.py`: bounded task/result envelopes, team member validation, profiles, skill refs, memory queries, and context digests.
+- `scripts/a2a_protocol.py`: bounded task/result envelopes, team member validation (including optional member-scoped target paths), profiles, skill refs, memory queries, and context digests.
 - `scripts/bridge_state.py`: atomic durable profiles, memory, reusable skills, jobs, and schedules.
 - `scripts/claude_a2a_server.py`: loopback/LAN relay, native-team manifest construction, Git gates, and capability endpoint.
 - `scripts/claude_a2a_client.py`: validated HTTP client.

@@ -17,7 +17,7 @@ function Invoke-Smoke {
     $oldPath = $env:Path
     try {
         $env:Path = "$BinPath;$oldPath"
-        & powershell.exe -NoProfile -File $delegate `
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $delegate `
             -WorkingDirectory $tempRoot `
             -Prompt 'Return the smoke result.' `
             -TargetPath 'target.txt' `
@@ -47,7 +47,7 @@ function Invoke-McpSmoke {
     $resultPath = Join-Path $tempRoot 'mcp.json'
     try {
         $env:Path = "$mcpBin;$oldPath"
-        & powershell.exe -NoProfile -File $delegate `
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $delegate `
             -WorkingDirectory $tempRoot `
             -Prompt 'Return the MCP smoke result.' `
             -TargetPath 'target.txt' `
