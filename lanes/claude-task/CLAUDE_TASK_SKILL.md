@@ -83,6 +83,18 @@ powershell -NoProfile -File `
 
 The daemon starts no Claude process at launch. Every execution gets a fresh `claude.cmd mcp serve` session with the selected workspace as its working directory. Asynchronous jobs continue after the submitting client disconnects; state stays outside the repository.
 
+For long-running CLI fallback work, set `CLAUDE_A2A_TIMEOUT_SECONDS` before
+launching the host (or pass `-TimeoutSeconds` explicitly). This keeps the
+timeout scoped to that relay process; for example, use `2400` for a bounded
+multi-chapter editorial pass:
+
+```powershell
+$env:CLAUDE_A2A_TIMEOUT_SECONDS = '2400'
+powershell -NoProfile -File `
+  "<skill-root>\scripts\start_claude_a2a_server.ps1" `
+  -WorkspaceRoot "C:\path\to\repo"
+```
+
 ## Health and capability checks
 
 Relay health is cheap and does not start Claude:

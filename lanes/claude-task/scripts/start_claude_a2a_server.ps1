@@ -24,6 +24,18 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$configuredTimeout = 0
+if ($null -eq $TimeoutSeconds -and -not [string]::IsNullOrWhiteSpace($env:CLAUDE_A2A_TIMEOUT_SECONDS)) {
+    if (-not [int]::TryParse(
+            $env:CLAUDE_A2A_TIMEOUT_SECONDS,
+            [Globalization.NumberStyles]::Integer,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [ref]$configuredTimeout
+        ) -or $configuredTimeout -le 0) {
+        throw 'CLAUDE_A2A_TIMEOUT_SECONDS must be a positive integer when supplied.'
+    }
+    $TimeoutSeconds = [Nullable[int]]$configuredTimeout
+}
 $resolvedRoot = (Resolve-Path -LiteralPath $WorkspaceRoot).Path
 $resolvedStateDir = (New-Item -ItemType Directory -Path $StateDir -Force).FullName
 if ($ListenHost -notin @('127.0.0.1', 'localhost', '::1') -and [string]::IsNullOrWhiteSpace($AuthToken)) {

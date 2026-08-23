@@ -107,6 +107,11 @@ Use a firewall rule and keep the workspace root narrow. Never put the token in
 task JSON or source control. State is stored outside the worktree and contains
 bounded jobs, receipts, profiles, memory, skills, and schedules—not transcripts.
 
+For long-running CLI fallback work, set `CLAUDE_A2A_TIMEOUT_SECONDS` before
+launching the host, or pass `-TimeoutSeconds` explicitly. The setting applies
+only to that relay process; `2400` is a suitable example for a bounded
+multi-chapter editorial pass.
+
 ## Health and capability checks
 
 Check the daemon without starting Claude:
