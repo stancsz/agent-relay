@@ -189,19 +189,26 @@ accepted as proof.
 ### Configurable intelligence escalation
 
 Agent Relay does not send every task to a frontier model. It evaluates explicit
-policy gates—`plan`, `execute`, `review`, `recovery`, and `release`—using
+policy gates—`plan_end`, `execute`, `review_end`, `recovery`, and `release`—using
 operational signals such as risk flags, ambiguity, scope, failed attempts,
 missing evidence, and verification state. A matched rule returns one of
 `continue`, `consult`, `require_review`, or `block`.
 
-`continue` keeps the task on the bulk worker path. `consult` summons a
-configured high-intelligence planning or recovery profile; `require_review`
-requires a read-only high verifier before acceptance; and `block` fails closed
+`continue` keeps the task on the bulk worker path. By default, the policy
+summons Sol high for a second opinion at `plan_end`, then requires a read-only
+high verifier at `review_end`; both profiles are configurable. `consult`
+summons a configured high-intelligence planning or recovery profile;
+`require_review` requires a read-only high verifier before acceptance; and `block` fails closed
 when authority or evidence is insufficient. The policy, profiles, model names,
 and reasoning effort are configurable in a versioned JSON file; a high-model
 receipt never replaces deterministic tests, scope checks, or workspace proof.
 See [`docs/pm/escalation-policy.md`](docs/pm/escalation-policy.md) and the
 example at [`config/escalation.example.json`](config/escalation.example.json).
+If Sol finds an actionable issue, the consultation receipt returns a bounded
+`REVISE_BULK_WORKER_AND_RECHECK` next step. The selected worker—often
+`claude-task` for repository-aware work—revises, reruns deterministic checks,
+and is consulted again once. Exhaustion yields `HUMAN_REVIEW` or `BLOCKED`, not
+an infinite retry loop.
 
 ### Good delegation candidates
 
@@ -413,6 +420,8 @@ agent-relay cancel   Request cancellation without claiming execution stopped
 agent-relay resume   Requeue a waiting task after interruption
 agent-relay worker   Run the reference local-Qwen or Claude worker loop
 agent-relay review   Run the read-only Codex subscription QA verifier
+agent-relay escalate Evaluate the configurable intelligence gate
+agent-relay consult  Summon the configured high Codex profile when required
 agent-relay ask      Consult the AGY Google-stack specialist in plan mode
 agent-relay doctor   Check Ollama, the exact model, and optional Codex smoke.
 agent-relay triage   Decide DELEGATE, KEEP_LOCAL, or BLOCKED.
@@ -425,6 +434,24 @@ agent-relay reprice  Estimate compact-handoff economics for a recorded run.
 The `agent-relay` command is canonical for these surfaces; `subagent` remains a
 compatibility alias for existing integrations.
 ~~~
+
+At the end of ordinary planning, request the default Sol-high second opinion:
+
+~~~powershell
+agent-relay escalate --task .\task.json --stage plan_end --json
+agent-relay consult --task .\task.json --repo . --stage plan_end --json
+~~~
+
+After the ordinary worker has reviewed its candidate, use the acceptance gate:
+
+~~~powershell
+agent-relay escalate --task .\task.json --stage review_end --json
+agent-relay consult --task .\task.json --repo . --stage review_end --json
+~~~
+
+Pass `--policy .\config\escalation.example.json` or set
+`AR_ESCALATION_POLICY` to replace the defaults. A required consultation that
+cannot run is a failed gate; it is never silently downgraded to the bulk lane.
 
 ## Durable coordinator quick start
 

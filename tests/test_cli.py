@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 from agent_relay import cli
+from agent_relay.codex_review import CodexReviewResult
 from agent_relay.result import DelegationResult, ResultStatus
 
 
@@ -40,6 +41,185 @@ def test_delegate_parser_exposes_sandboxed_claude_lane() -> None:
     )
 
     assert args.backend == "claude-task"
+
+
+def test_escalation_parser_exposes_plan_and_review_end_gates() -> None:
+    parser = cli._parser()
+
+    plan = parser.parse_args([
+        "escalate", "--task", "task.json", "--stage", "plan_end",
+        "--signals-json", '{"ambiguity":true}',
+    ])
+    consult = parser.parse_args([
+        "consult", "--task", "task.json", "--stage", "review_end",
+        "--model", "gpt-5.6-sol", "--reasoning-effort", "high",
+    ])
+
+    assert plan.command == "escalate"
+    assert plan.stage == "plan_end"
+    assert consult.command == "consult"
+    assert consult.model == "gpt-5.6-sol"
+
+
+def test_escalate_command_returns_machine_readable_second_opinion_decision(tmp_path, capsys) -> None:
+    task_path = tmp_path / "task.json"
+    task_path.write_text(json.dumps({
+        "task_id": "escalation-cli",
+        "objective": "Change one value.",
+        "allowed_files": ["value.py"],
+        "verification": ["python -c \"assert True\""],
+        "task_kind": "mechanical",
+    }), encoding="utf-8")
+    args = Namespace(
+        task=task_path,
+        stage="plan_end",
+        policy=None,
+        signals_json=None,
+        as_json=True,
+    )
+
+    assert cli._escalate(args) == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ESCALATION_DECISION"
+    assert payload["decision"]["action"] == "consult"
+    assert payload["decision"]["profile"]["model"] == "gpt-5.6-sol"
+
+
+def test_consult_command_does_not_invoke_codex_when_policy_continues(tmp_path, capsys) -> None:
+    task_path = tmp_path / "task.json"
+    task_path.write_text(json.dumps({
+        "task_id": "no-consult",
+        "objective": "Change one value.",
+        "allowed_files": ["value.py"],
+        "verification": ["python -c \"assert True\""],
+    }), encoding="utf-8")
+    policy_path = tmp_path / "policy.json"
+    policy_path.write_text(json.dumps({
+        "version": 1,
+        "enabled": True,
+        "default_action": "continue",
+        "profiles": {},
+        "rules": [],
+    }), encoding="utf-8")
+    args = Namespace(
+        task=task_path,
+        repo=tmp_path,
+        stage="execute",
+        policy=policy_path,
+        signals_json=None,
+        prompt=None,
+        codex_bin=None,
+        model=None,
+        reasoning_effort=None,
+        timeout_seconds=None,
+        force=False,
+        as_json=True,
+    )
+
+    assert cli._consult(args) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "NOT_REQUIRED"
+
+
+def test_consult_command_invokes_selected_sol_profile_and_returns_receipt(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    task_path = tmp_path / "task.json"
+    task_path.write_text(json.dumps({
+        "task_id": "consult-sol",
+        "objective": "Review the candidate plan.",
+        "allowed_files": ["value.py"],
+        "verification": ["python -c \"assert True\""],
+    }), encoding="utf-8")
+    calls = []
+
+    def fake_review(repo, **kwargs):
+        calls.append((repo, kwargs))
+        return CodexReviewResult(
+            status="PASS",
+            summary="No actionable findings.",
+            findings="No actionable findings.",
+            return_code=0,
+            duration_seconds=0.1,
+            runtime={"model": kwargs["config"].model},
+        )
+
+    monkeypatch.setattr(cli, "run_codex_review", fake_review)
+    args = Namespace(
+        task=task_path,
+        repo=tmp_path,
+        stage="plan_end",
+        policy=None,
+        signals_json=None,
+        prompt=None,
+        codex_bin="codex-test",
+        model=None,
+        reasoning_effort=None,
+        timeout_seconds=5,
+        force=False,
+        as_json=True,
+    )
+
+    assert cli._consult(args) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "CONSULTED"
+    assert payload["decision"]["profile"]["model"] == "gpt-5.6-sol"
+    assert calls[0][0] == tmp_path
+    assert calls[0][1]["uncommitted"] is False
+    assert calls[0][1]["config"].model == "gpt-5.6-sol"
+    assert calls[0][1]["config"].reasoning_effort == "high"
+
+
+def test_failed_sol_review_returns_bounded_revise_then_human_review(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    task_path = tmp_path / "task.json"
+    task_path.write_text(json.dumps({
+        "task_id": "consult-revise",
+        "objective": "Review the candidate.",
+        "allowed_files": ["value.py"],
+        "verification": ["python -c \"assert True\""],
+    }), encoding="utf-8")
+    policy_path = tmp_path / "policy.json"
+    policy_path.write_text(json.dumps({
+        "version": 1,
+        "enabled": True,
+        "default_action": "continue",
+        "profiles": {"v": {"lane": "codex-review", "model": "sol", "role": "verifier"}},
+        "rules": [{
+            "id": "review",
+            "priority": 1,
+            "stages": ["review_end"],
+            "action": "require_review",
+            "profile": "v",
+            "max_revisions": 1,
+            "on_reject": "revise",
+            "on_exhausted": "human_review",
+        }],
+    }), encoding="utf-8")
+    monkeypatch.setattr(cli, "run_codex_review", lambda *_args, **_kwargs: CodexReviewResult(
+        status="FAILED",
+        summary="findings",
+        findings="Defect found",
+        return_code=1,
+        duration_seconds=0.1,
+        runtime={},
+    ))
+
+    base = dict(
+        task=task_path, repo=tmp_path, stage="review_end", policy=policy_path,
+        signals_json=None, prompt=None, codex_bin="codex-test", model=None,
+        reasoning_effort=None, timeout_seconds=5, force=False, as_json=True,
+    )
+    assert cli._consult(Namespace(**base, round=0)) == 2
+    first = json.loads(capsys.readouterr().out)
+    assert first["next_step"] == "REVISE_BULK_WORKER_AND_RECHECK"
+    assert first["feedback_round"] == 1
+
+    assert cli._consult(Namespace(**base, round=1)) == 2
+    second = json.loads(capsys.readouterr().out)
+    assert second["next_step"] == "HUMAN_REVIEW"
+    assert second["escalation_exhausted"] is True
 
 
 def test_control_plane_parser_exposes_durable_lifecycle_commands() -> None:

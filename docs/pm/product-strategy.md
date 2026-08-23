@@ -30,10 +30,16 @@ Solo developers and small engineering teams who have two or more PCs, workstatio
 6. Agent Relay records a receipt tied to task, worker, workspace, artifacts, and verification.
 7. The developer reviews and integrates the result on PC A.
 
-For difficult jobs, the flow has explicit policy gates before execution and
-before acceptance. A high planner can shape the work, while a separate high
-verifier can challenge the candidate result. Neither opinion bypasses the
-task contract or deterministic proof.
+The default flow gives the high-intelligence model two high-leverage second
+opinions: Sol high critiques the ordinary model's plan before execution, then
+reviews the ordinary model's review before acceptance. The first is advisory;
+the second is an acceptance gate. Neither opinion bypasses the task contract or
+deterministic proof.
+
+If the high reviewer rejects the plan or candidate, the bulk worker receives
+the bounded findings, revises, reruns checks, and is rechecked once by default.
+This makes the smart model a feedback amplifier rather than a parallel author;
+an exhausted loop stops for human review instead of consuming unbounded tokens.
 
 This is concrete enough to demonstrate value and narrow enough to avoid building a full distributed agent platform on day one.
 

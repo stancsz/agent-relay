@@ -28,10 +28,11 @@ candidate receipt, not proof.
 - Use `claude-mcp` only when an existing remote MCP service is the intended
   execution authority; it does not provide local patch or sandbox proof.
 - Use `codex-review` after implementation for an independent, read-only QA pass.
-- Use the configurable escalation policy at `plan`, `execute`, `review`,
+- Use the configurable escalation policy at `plan_end`, `execute`, `review_end`,
   `recovery`, and `release` gates. Let ordinary workers do bulk work; summon a
-  configured high planner/verifier only when the matched rule returns
-  `consult` or `require_review`.
+  configured Sol-high planner after ordinary planning and high verifier after
+  ordinary review by default; additional rules can summon them on recovery,
+  ambiguity, risk, or missing proof.
 - Use `agy-antigravity` for Google-specific ecosystem questions, Firebase,
   Android, browser/UI, and Gemini/Google Cloud integration judgment. Treat it as
   a plan/research specialist, not a general patch worker.
@@ -44,6 +45,11 @@ the matched rule, signals, selected profile/model, and evidence requirements.
 Malformed policy, unavailable required high-lane capability, missing evidence,
 or ambiguous safety signals fail closed; do not silently fall back to the bulk
 worker and call a required consultation complete.
+
+Treat a high-tier rejection as feedback: return it to the selected bulk worker
+(`claude-task` for repository-aware implementation, or another configured
+worker), require a deterministic recheck, and invoke the high gate again. Keep
+the revision count bounded; after exhaustion stop at human review or blocked.
 
 ## Commands
 

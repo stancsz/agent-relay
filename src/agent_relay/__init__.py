@@ -13,6 +13,14 @@ from .triage import (
     TriageResult,
     triage_task,
 )
+from .escalation import (
+    EscalationDecision,
+    EscalationPolicy,
+    EscalationPolicyError,
+    EscalationProfile,
+    EscalationRule,
+    load_policy,
+)
 
 __all__ = [
     "DelegationResult",
@@ -28,6 +36,12 @@ __all__ = [
     "TriageConfidence",
     "TriageResult",
     "triage_task",
+    "EscalationDecision",
+    "EscalationPolicy",
+    "EscalationPolicyError",
+    "EscalationProfile",
+    "EscalationRule",
+    "load_policy",
 ]
 
 __version__ = "0.1.0"

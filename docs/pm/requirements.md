@@ -65,7 +65,15 @@ The MVP does not require every current lane to work remotely. One production-qua
 ### R9. Configurable intelligence escalation
 
 - The coordinator or local orchestrator can evaluate a task at explicit
-  `plan`, `execute`, `review`, `recovery`, and `release` stages.
+  `plan_end`, `execute`, `review_end`, `recovery`, and `release` stages; `plan`
+  and `review` are compatibility aliases.
+- The default policy summons the configured high planner (gpt-5.6-sol in the
+  example policy) after the ordinary planning pass and the configured high
+  verifier after the ordinary review pass.
+- If either high gate returns actionable rejection, the selected bulk worker
+  receives the bounded feedback, revises, reruns deterministic checks, and is
+  rechecked. The maximum revision count and exhausted outcome are configurable;
+  infinite retries and silent acceptance are prohibited.
 - The escalation policy is versioned, configurable, ordered by priority, and
   fail-closed when malformed.
 - A decision distinguishes `continue`, `consult`, `require_review`, and

@@ -28,6 +28,7 @@ from .control import (
     stream_events,
 )
 from .delegate import delegate_local
+from .escalation import EscalationPolicyError, load_policy
 from .lanes import canonical_lane_name, lane_health_manifest, lane_manifest
 from .mcp import serve_mcp_forever
 from .ollama import OllamaClient, OllamaConfig, OllamaError
@@ -336,6 +337,50 @@ def _parser() -> argparse.ArgumentParser:
     triage.add_argument("--max-files", type=int, default=3)
     triage.add_argument("--max-context-items", type=int, default=6)
     triage.add_argument("--json", action="store_true", dest="as_json")
+
+    escalate = subparsers.add_parser(
+        "escalate",
+        help="evaluate the configurable high-intelligence escalation policy",
+    )
+    escalate.add_argument("--task", required=True, type=Path)
+    escalate.add_argument(
+        "--stage",
+        choices=("plan_end", "execute", "review_end", "recovery", "release", "plan", "review"),
+        required=True,
+    )
+    escalate.add_argument("--policy", type=Path, help="versioned escalation policy JSON")
+    escalate.add_argument(
+        "--signals-json",
+        help="additional observed operational signals as a JSON object",
+    )
+    escalate.add_argument("--json", action="store_true", dest="as_json")
+
+    consult = subparsers.add_parser(
+        "consult",
+        help="evaluate escalation and invoke the configured high Codex lane when required",
+    )
+    consult.add_argument("--task", required=True, type=Path)
+    consult.add_argument("--repo", type=Path, default=Path.cwd())
+    consult.add_argument(
+        "--stage",
+        choices=("plan_end", "execute", "review_end", "recovery", "release", "plan", "review"),
+        required=True,
+    )
+    consult.add_argument("--policy", type=Path, help="versioned escalation policy JSON")
+    consult.add_argument("--signals-json", help="additional observed operational signals as a JSON object")
+    consult.add_argument("--prompt", help="bounded additional consultation scope")
+    consult.add_argument("--codex-bin")
+    consult.add_argument("--model", help="explicit override for the selected profile")
+    consult.add_argument("--reasoning-effort", help="explicit override for the selected profile")
+    consult.add_argument("--timeout-seconds", type=float)
+    consult.add_argument(
+        "--round",
+        type=int,
+        default=0,
+        help="zero-based high-gate consultation round for bounded rework",
+    )
+    consult.add_argument("--force", action="store_true", help="invoke the selected profile even when policy says continue")
+    consult.add_argument("--json", action="store_true", dest="as_json")
 
     evaluate = subparsers.add_parser("eval", help="run a declared evaluation suite")
     evaluate.add_argument(
@@ -1138,6 +1183,136 @@ def _triage(args: argparse.Namespace) -> int:
     return 2
 
 
+def _escalation_signals(task: DelegationTask, raw: str | None) -> dict[str, Any]:
+    signals: dict[str, Any] = {
+        "task_kind": task.task_kind,
+        "risk_flags": list(task.risk_flags),
+        "scope_files": len(task.allowed_files),
+        "ambiguity": task.task_kind == "ambiguous",
+    }
+    if raw:
+        value = json.loads(raw)
+        if not isinstance(value, dict):
+            raise ValueError("--signals-json must be an object")
+        signals.update(value)
+    return signals
+
+
+def _load_escalation_task(path: Path) -> DelegationTask:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("task JSON must be an object")
+    return DelegationTask.from_dict(value)
+
+
+def _escalate(args: argparse.Namespace) -> int:
+    try:
+        task = _load_escalation_task(args.task)
+        policy = load_policy(args.policy)
+        decision = policy.evaluate(args.stage, _escalation_signals(task, args.signals_json))
+    except (OSError, json.JSONDecodeError, ValueError, EscalationPolicyError) as exc:
+        print(json.dumps({"status": "POLICY_ERROR", "error": str(exc)}, ensure_ascii=False, indent=2))
+        return 2
+    payload = {"status": "ESCALATION_DECISION", "task_id": task.task_id, "decision": decision.to_dict()}
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    if decision.action == "block":
+        return 2
+    if decision.escalated:
+        return 1
+    return 0
+
+
+def _consult_prompt(task: DelegationTask, decision: Any, additional: str | None) -> str:
+    profile = decision.profile
+    role = profile.role if profile is not None else "high-intelligence consultant"
+    required = ", ".join(decision.evidence_required) or "bounded feedback and concrete risks"
+    prompt = (
+        f"Act as the independent {role} for an Agent Relay escalation at stage "
+        f"{decision.stage}. The ordinary model has already produced a candidate "
+        "plan or review. Give a second opinion on what it may have missed. "
+        "Do not edit files, commit, deploy, or treat your opinion as permission. "
+        f"Task objective: {task.objective}\n"
+        f"Task kind: {task.task_kind}\n"
+        f"Allowed files: {', '.join(task.allowed_files)}\n"
+        f"Requirements: {'; '.join(task.requirements) or '[none]'}\n"
+        f"Success criteria: {'; '.join(task.success_criteria) or '[none]'}\n"
+        f"Observed signals: {json.dumps(dict(decision.signals), ensure_ascii=False, sort_keys=True)}\n"
+        f"Return evidence for: {required}. Distinguish confirmed defects, risks, "
+        "and recommendations. Keep the response bounded and actionable."
+    )
+    if additional and additional.strip():
+        prompt += "\n\nAdditional bounded scope:\n" + additional.strip()[:4000]
+    return prompt
+
+
+def _consult(args: argparse.Namespace) -> int:
+    try:
+        task = _load_escalation_task(args.task)
+        policy = load_policy(args.policy)
+        decision = policy.evaluate(args.stage, _escalation_signals(task, args.signals_json))
+    except (OSError, json.JSONDecodeError, ValueError, EscalationPolicyError) as exc:
+        print(json.dumps({"status": "POLICY_ERROR", "error": str(exc)}, ensure_ascii=False, indent=2))
+        return 2
+
+    if decision.action == "block":
+        print(json.dumps({"status": "BLOCKED", "decision": decision.to_dict()}, ensure_ascii=False, indent=2))
+        return 2
+    if decision.action == "continue" and not args.force:
+        print(json.dumps({"status": "NOT_REQUIRED", "decision": decision.to_dict()}, ensure_ascii=False, indent=2))
+        return 0
+
+    profile = decision.profile
+    try:
+        config = CodexReviewConfig.from_env(
+            executable=args.codex_bin,
+            model=args.model or (profile.model if profile else None),
+            reasoning_effort=args.reasoning_effort or (profile.reasoning_effort if profile else None),
+            timeout_seconds=args.timeout_seconds,
+        )
+        result = run_codex_review(
+            args.repo,
+            uncommitted=False,
+            prompt=_consult_prompt(task, decision, args.prompt),
+            config=config,
+        )
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        payload = {
+            "status": "CONSULTATION_FAILED",
+            "decision": decision.to_dict(),
+            "error": str(exc),
+            "fail_closed": decision.action == "require_review",
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 2
+
+    payload = {
+        "status": "CONSULTED" if result.passed else "CONSULTATION_FAILED",
+        "decision": decision.to_dict(),
+        "consultation": result.to_dict(),
+        "fail_closed": decision.action == "require_review" and not result.passed,
+    }
+    round_index = getattr(args, "round", 0)
+    if not isinstance(round_index, int) or round_index < 0:
+        payload["status"] = "POLICY_ERROR"
+        payload["error"] = "--round must be a non-negative integer"
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 2
+    if result.passed:
+        payload["next_step"] = (
+            "CONTINUE_TO_EXECUTION"
+            if decision.stage == "plan_end"
+            else "ACCEPT_IF_DETERMINISTIC_PROOF_PASSES"
+        )
+    elif decision.on_reject == "revise" and round_index < decision.max_revisions:
+        payload["next_step"] = "REVISE_BULK_WORKER_AND_RECHECK"
+        payload["feedback_round"] = round_index + 1
+    else:
+        payload["next_step"] = decision.on_exhausted.upper()
+        payload["escalation_exhausted"] = True
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0 if result.passed else 2
+
+
 def _eval(args: argparse.Namespace) -> int:
     try:
         runner = _load_eval_runner(args.repo)
@@ -1303,6 +1478,10 @@ def main(argv: list[str] | None = None) -> int:
         return _ask(args)
     if args.command == "triage":
         return _triage(args)
+    if args.command == "escalate":
+        return _escalate(args)
+    if args.command == "consult":
+        return _consult(args)
     if args.command == "eval":
         return _eval(args)
     if args.command == "baseline":

@@ -27,12 +27,13 @@ side-effect-aware retry still need external acceptance evidence.
 
 The repository has separate worker and high-reasoning review lanes, but the
 current audit must distinguish those adapters from a policy that decides when
-to invoke them. The escalation-policy slice adds that missing decision layer:
-versioned stage signals, ordered rules, explicit `continue`/`consult`/
-`require_review`/`block` outcomes, and bounded consultation evidence. Until its
-focused tests and CLI exercise pass, do not claim that Agent Relay has
-automatic intelligent escalation; a manually invoked `review` is only a
-review-lane capability.
+to invoke them. The escalation-policy slice now adds a local decision and
+consultation surface: versioned stage signals, ordered rules, explicit
+`continue`/`consult`/`require_review`/`block` outcomes, and bounded
+consultation evidence. The default local flow summons Sol high at `plan_end`
+and `review_end`. Durable remote submissions still need an orchestrator or
+follow-up chain to carry the same decision and receipt; a manually invoked
+`review` remains only a review-lane capability.
 
 | Capability | State | Evidence | Product assessment |
 | --- | --- | --- | --- |
