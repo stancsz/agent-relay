@@ -1,8 +1,7 @@
 # Agent Relay
 
-Formerly Local Code Delegate. The `LCD_*` environment variables and `lcd`
-command remain compatibility interfaces for existing evaluations; new project
-documentation should use Agent Relay and `agent-relay`.
+The `AR_*` environment-variable namespace and `agent-relay` command are the
+canonical interfaces for this project.
 
 ## Unified subagent expansion
 
@@ -12,7 +11,7 @@ The repository's unified subagent surface now has four explicit lanes:
 |---|---|---|---|
 | `local-qwen` | local/free mechanical worker | Qwen3.5:4B | bounded disposable sandbox and parent verification |
 | `claude-task` | primary Claude implementation/team worker | host policy | authenticated task bridge and Git gates |
-| `codex-review` | subscription QA verifier | GPT-5.6 Sol, high | read-only Codex CLI review receipt |
+| `codex-review` | subscription QA verifier | GPT-5.6 Luna, high | read-only Codex CLI review receipt |
 | `agy-antigravity` | Google-stack scout/planner | Gemini 3.1 Pro, high | plan consultation; parent owns edits and validation |
 
 The evidence-backed role matrix and local receipts are maintained in
@@ -111,62 +110,82 @@ OLLAMA_HOST=http://localhost:11434
 LOCAL_MODEL=qwen3.5:4b
 OLLAMA_API_KEY=<optional key for an authenticated Ollama-compatible gateway>
 OLLAMA_SEED=<optional seed for reproducible evals>
-LCD_CODEX_OLLAMA_HOST=<Ollama host used by Codex CLI local mode>
-LCD_CODEX_MODEL=qwen3.5:4b (already installed at that host)
-LCD_CODEX_LOCAL_PROVIDER=ollama-chat
-LCD_CODEX_PROVIDER_ID=lcd-ollama
-LCD_CODEX_WIRE_API=responses (current Codex CLI; use chat only for legacy Codex)
-LCD_CODEX_SANDBOX=danger-full-access (only inside the disposable Git worktree)
-LCD_CODEX_REASONING_EFFORT=low|medium|high
-LCD_CODEX_TIMEOUT_SECONDS=180 (raise for cold local-model startup)
-LCD_CODEX_IDLE_TIMEOUT_SECONDS=90 (fail a silent lane, count proxy progress)
-LCD_CODEX_COMPAT_PROXY=true (temporary loopback custom-provider adapter)
-LCD_CODEX_DISABLE_REASONING=true (small-model compatibility mode)
-LCD_CODEX_STRIP_TOOLS=true (small-model compatibility mode)
-LCD_CODEX_COMPACT_PROMPT=true (compact redundant provider context)
-LCD_CODEX_NUM_CTX=8192 (bounded default; override only after smoke)
-LCD_CODEX_NUM_PREDICT=<optional provider output bound>
-LCD_CODEX_TEMPERATURE=0 (deterministic bounded-eval default)
-LCD_CODEX_SEED=<optional fixed seed, e.g. 17, for reproducible evals>
-LCD_CODEX_OUTPUT_SCHEMA=false (experimental; provider compatibility required)
-LCD_CODEX_RETRY_MODEL=qwen3.5:4b (optional explicit same-model retry)
+AR_CODEX_OLLAMA_HOST=<Ollama host used by Codex CLI local mode>
+AR_CODEX_MODEL=qwen3.5:4b (already installed at that host)
+AR_CODEX_LOCAL_PROVIDER=ollama-chat
+AR_CODEX_PROVIDER_ID=ar-ollama
+AR_CODEX_WIRE_API=responses (current Codex CLI; use chat only for legacy Codex)
+AR_CODEX_SANDBOX=danger-full-access (only inside the disposable Git worktree)
+AR_CODEX_REASONING_EFFORT=low|medium|high
+AR_CODEX_TIMEOUT_SECONDS=180 (raise for cold local-model startup)
+AR_CODEX_IDLE_TIMEOUT_SECONDS=90 (fail a silent lane, count proxy progress)
+AR_CODEX_COMPAT_PROXY=true (temporary loopback custom-provider adapter)
+AR_CODEX_DISABLE_REASONING=true (small-model compatibility mode)
+AR_CODEX_STRIP_TOOLS=true (small-model compatibility mode)
+AR_CODEX_COMPACT_PROMPT=true (compact redundant provider context)
+AR_CODEX_NUM_CTX=8192 (bounded default; override only after smoke)
+AR_CODEX_NUM_PREDICT=<optional provider output bound>
+AR_CODEX_TEMPERATURE=0 (deterministic bounded-eval default)
+AR_CODEX_SEED=<optional fixed seed, e.g. 17, for reproducible evals>
+AR_CODEX_OUTPUT_SCHEMA=false (experimental; provider compatibility required)
+AR_CODEX_RETRY_MODEL=qwen3.5:4b (optional explicit same-model retry)
+AR_CODEX_REVIEW_MODEL=gpt-5.6-luna (read-only subscription review lane)
+AR_CODEX_REVIEW_REASONING_EFFORT=high
+AR_CODEX_REVIEW_TIMEOUT_SECONDS=300
+AR_AGY_BIN=agy.cmd (optional executable override)
+AR_AGY_MODEL=gemini-3.1-pro-high
+AR_AGY_EFFORT=high
+AR_AGY_MODE=plan (the safe default)
+AR_AGY_SANDBOX=true
+AR_AGY_TIMEOUT_SECONDS=300
 OLLAMA_NUM_CTX=8192
 OLLAMA_KEEP_ALIVE=10m
-LCD_CLAUDE_BIN=claude.cmd (optional executable override)
-LCD_CLAUDE_OLLAMA_HOST=http://localhost:11434
-LCD_CLAUDE_MODEL=qwen3.5:4b
-LCD_CLAUDE_EFFORT=low
-LCD_DEEPSEEK_BIN=dsh.cmd (official DeepSeek Harness CLI)
-LCD_DEEPSEEK_OLLAMA_HOST=http://localhost:11434
-LCD_DEEPSEEK_MODEL=qwen3.5:4b
-LCD_DEEPSEEK_NUM_CTX=8192
+AR_CLAUDE_BIN=claude.cmd (optional executable override)
+AR_CLAUDE_BRIDGE_SCRIPT=lanes/claude-task/scripts/claude_a2a_server.py
+AR_CLAUDE_TIMEOUT_SECONDS=300
+AR_CLAUDE_VERIFICATION_TIMEOUT_SECONDS=120
+# Future DeepSeek adapter contract; not read by the current runtime yet.
+AR_DEEPSEEK_BIN=dsh.cmd (official DeepSeek Harness CLI)
+AR_DEEPSEEK_OLLAMA_HOST=http://localhost:11434
+AR_DEEPSEEK_MODEL=qwen3.5:4b
+AR_DEEPSEEK_NUM_CTX=8192
 ~~~
 
-The planned harness seam is intentionally narrow rather than a generalized
-provider framework. Claude Code and DeepSeek Harness should be explicit
-adapters with availability records; missing executables, unreachable Ollama,
-missing exact models, and startup failures must be reported as infrastructure
-unavailability, not counted as model-quality failures and never trigger an
-automatic fallback.
+The harness seam is intentionally narrow rather than a generalized provider
+framework. Claude Code is an explicit sandboxed adapter with availability
+records; DeepSeek remains future work. Missing executables, unreachable
+Ollama, missing exact models, and startup failures must be reported as
+infrastructure unavailability, not counted as model-quality failures and
+never trigger an automatic fallback.
 
 The first CLI surface is:
 
 ~~~text
-lcd doctor
-lcd doctor --codex-smoke --model <model>
-lcd triage --task task.json --avoided-tokens <n> --spent-tokens <n>
-lcd delegate --require-triage --task task.json --repo <path> \
+agent-relay doctor
+agent-relay doctor --all
+agent-relay lanes --check --json
+agent-relay serve --db .\relay.sqlite3 --port 8788
+agent-relay submit --url http://127.0.0.1:8788 --task task.json --idempotency-key task-001 --json
+agent-relay watch task-001 --url http://127.0.0.1:8788 --json
+agent-relay inspect task-001 --url http://127.0.0.1:8788 --json
+agent-relay cancel task-001 --url http://127.0.0.1:8788 --json
+agent-relay resume task-001 --url http://127.0.0.1:8788 --json
+agent-relay worker --url http://127.0.0.1:8788 --token $env:AR_RELAY_AUTH_TOKEN \
+  --worker-id pc-b --backend claude-task --repo C:\work\repo --once
+agent-relay doctor --codex-smoke --model <model>
+agent-relay triage --task task.json --avoided-tokens <n> --spent-tokens <n>
+agent-relay delegate --require-triage --task task.json --repo <path> \
   --avoided-tokens <n> --spent-tokens <n>
-lcd batch --require-triage --manifest batch.json --repo <path> \
+agent-relay batch --require-triage --manifest batch.json --repo <path> \
   --avoided-tokens <n> --spent-tokens <n>
-lcd eval --backend ollama --model <model> --suite bounded-basic
-lcd delegate --backend codex-ollama --require-triage --task task.json --repo <path>
-lcd eval --backend codex-ollama --model <model> --suite bounded-basic
-# Target CLI surface after the three adapter milestones:
-lcd delegate --backend claude-ollama --require-triage --task task.json --repo <path>
-lcd eval --backend claude-ollama --model <model> --suite bounded-basic
-lcd delegate --backend deepseek-ollama --require-triage --task task.json --repo <path>
-lcd eval --backend deepseek-ollama --model <model> --suite bounded-basic
+agent-relay eval --backend ollama --model <model> --suite bounded-basic
+agent-relay delegate --backend codex-ollama --require-triage --task task.json --repo <path>
+agent-relay eval --backend codex-ollama --model <model> --suite bounded-basic
+# Sandboxed Claude task lane, backed by the vendored bounded A2A bridge:
+agent-relay delegate --backend claude-task --task task.json --repo <path>
+# Future DeepSeek adapter surface:
+agent-relay delegate --backend deepseek-ollama --require-triage --task task.json --repo <path>
+agent-relay eval --backend deepseek-ollama --model <model> --suite bounded-basic
 ~~~
 
 ## 3. Milestone 1
@@ -207,10 +226,12 @@ decision cost. Unknown or incomplete
 contracts stay in the parent until they are made explicit; safe-looking work
 without priced review/recovery cost is not assumed to save tokens.
 
+# Future adapter smoke flags are planned; the current CLI exposes only
+# `--codex-smoke`.
 For every future harness backend, a direct Ollama smoke is not sufficient
 runtime evidence. The parent should require the matching disposable capability smoke
-(`lcd doctor --codex-smoke`, `lcd doctor --claude-smoke`, or
-`lcd doctor --deepseek-smoke`) before starting a long run. A failed or unknown
+(`agent-relay doctor --codex-smoke`, `agent-relay doctor --claude-smoke`, or
+`agent-relay doctor --deepseek-smoke`) before starting a long run. A failed or unknown
 lane-health probe means the harness is unavailable; it does not justify a
 silent fallback or bypassing triage.
 
@@ -235,7 +256,7 @@ FRONTIER AGENT
   | sets requirements and verification
   | records the triage decision and expected token economics
   v
-LOCAL CODE DELEGATE
+AGENT RELAY
   | builds minimal context
   | calls Ollama directly or through the selected execution harness
   | validates and applies a patch in a sandbox

@@ -51,7 +51,7 @@ These are fresh local probes, not claims inferred from documentation:
 | --- | --- | --- |
 | `local-qwen` | PASS | Ollama was started locally; exact `qwen3.5:4b` was already installed; Codex-over-Ollama completed the bounded smoke in 11.14s, one attempt, with no model pull. |
 | `claude-task` | CLI/auth PASS; native-team MCP BLOCKED | Claude OAuth login and a live probe succeeded. MCP exposed the Agent tool, but the configured `general-purpose` agent type was unavailable. Use the explicit CLI fallback until the native agent type is configured. |
-| `codex-review` | BLOCKED in this environment | The read-only adapter reached `codex exec review`, but Codex CLI 0.87.0 rejected `gpt-5.6-sol` as requiring a newer CLI; it also reported the configured `127.0.0.1:9000/mcp` endpoint refused the connection. No fallback or model downgrade is allowed. |
+| `codex-review` | BLOCKED in this environment | The read-only adapter reached `codex exec review`, but Codex CLI 0.87.0 rejected `gpt-5.6-luna` as requiring a newer CLI; it also reported the configured `127.0.0.1:9000/mcp` endpoint refused the connection. No fallback or model downgrade is allowed. |
 | `agy-antigravity` | BLOCKED by permission prompt | `agy` was installed and listed the configured Gemini model. The plan-mode probe reached the CLI, but its permission check for `agy --help` was denied. The adapter must remain fail-closed; grant the CLI permission interactively before treating the lane as live. |
 
 The local result changes routing confidence, not safety boundaries: Qwen is the

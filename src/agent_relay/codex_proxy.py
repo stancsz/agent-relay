@@ -624,7 +624,7 @@ class OllamaCompatProxy:
         self._stats_snapshot = {}
         thread = Thread(
             target=server.serve_forever,
-            name="lcd-ollama-compat-proxy",
+            name="ar-ollama-compat-proxy",
             daemon=True,
         )
         thread.start()

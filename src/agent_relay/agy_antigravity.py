@@ -17,6 +17,8 @@ import subprocess
 import time
 from typing import Any, Mapping
 
+from .env import load_dotenv
+
 
 DEFAULT_AGY_MODEL = "gemini-3.1-pro-high"
 DEFAULT_AGY_EFFORT = "high"
@@ -42,36 +44,39 @@ class AgyConfig:
         sandbox: bool | None = None,
         timeout_seconds: float | None = None,
     ) -> "AgyConfig":
+        load_dotenv()
         resolved = (
             executable
-            or os.environ.get("SUBAGENT_AGY_BIN")
+            or os.environ.get("AR_AGY_BIN")
             or shutil.which("agy.exe")
             or shutil.which("agy")
         )
         if not resolved:
             raise FileNotFoundError(
-                "Antigravity CLI was not found; install agy or set SUBAGENT_AGY_BIN"
+                "Antigravity CLI was not found; install agy or set AR_AGY_BIN"
             )
         raw_timeout = timeout_seconds
         if raw_timeout is None:
             try:
-                raw_timeout = float(os.environ.get("SUBAGENT_AGY_TIMEOUT_SECONDS", "300"))
+                raw_timeout = float(
+                    os.environ.get("AR_AGY_TIMEOUT_SECONDS", "300")
+                )
             except ValueError:
                 raw_timeout = 300.0
         if raw_timeout <= 0:
             raise ValueError("AGY timeout must be greater than zero")
-        selected_mode = mode or os.environ.get("SUBAGENT_AGY_MODE", "plan")
+        selected_mode = mode or os.environ.get("AR_AGY_MODE", "plan")
         if selected_mode not in {"plan", "accept-edits"}:
             raise ValueError("AGY mode must be plan or accept-edits")
         selected_sandbox = sandbox
         if selected_sandbox is None:
-            selected_sandbox = os.environ.get("SUBAGENT_AGY_SANDBOX", "true").lower() in {
+            selected_sandbox = os.environ.get("AR_AGY_SANDBOX", "true").lower() in {
                 "1", "true", "yes", "on"
             }
         return cls(
             executable=resolved,
-            model=model or os.environ.get("SUBAGENT_AGY_MODEL", DEFAULT_AGY_MODEL),
-            effort=effort or os.environ.get("SUBAGENT_AGY_EFFORT", DEFAULT_AGY_EFFORT),
+            model=model or os.environ.get("AR_AGY_MODEL", DEFAULT_AGY_MODEL),
+            effort=effort or os.environ.get("AR_AGY_EFFORT", DEFAULT_AGY_EFFORT),
             mode=selected_mode,
             sandbox=selected_sandbox,
             timeout_seconds=raw_timeout,

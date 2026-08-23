@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "enabled": true,
+  "default_action": "continue",
+  "profiles": {
+    "high_planner": {
+      "lane": "codex-review",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "high"
+    },
+    "high_verifier": {
+      "lane": "codex-review",
+      "model": "gpt-5.6-terra",
+      "reasoning_effort": "high"
+    }
+  },
+  "rules": [
+    {
+      "id": "critical-authority",
+      "priority": 1000,
+      "stages": ["plan", "execute", "review", "recovery", "release"],
+      "any": {
+        "risk_flags": ["credentials", "production", "destructive"],
+        "consequence": ["critical"]
+      },
+      "action": "block",
+      "evidence_required": ["explicit_authority"]
+    },
+    {
+      "id": "hard-plan",
+      "priority": 900,
+      "stages": ["plan"],
+      "any": {
+        "task_kind": ["architecture", "security", "migration", "product_decision", "ambiguous"],
+        "ambiguity": true,
+        "consequence": ["high", "critical"]
+      },
+      "action": "consult",
+      "profile": "high_planner",
+      "evidence_required": ["assumptions", "alternatives", "risks", "acceptance_criteria"]
+    },
+    {
+      "id": "repeated-failure",
+      "priority": 750,
+      "stages": ["recovery"],
+      "any": {
+        "worker_failed": true,
+        "verification_failed": true,
+        "attempts_at_least": 2
+      },
+      "action": "consult",
+      "profile": "high_planner",
+      "evidence_required": ["failure_history", "attempted_remedies", "recovery_plan"]
+    },
+    {
+      "id": "proof-review",
+      "priority": 700,
+      "stages": ["review", "release"],
+      "any": {
+        "verification_failed": true,
+        "missing_evidence": true,
+        "scope_changed": true,
+        "risk_flags": ["security", "architecture", "production"]
+      },
+      "action": "require_review",
+      "profile": "high_verifier",
+      "evidence_required": ["independent_findings", "verification_receipt"]
+    }
+  ]
+}

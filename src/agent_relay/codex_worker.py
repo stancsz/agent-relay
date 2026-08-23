@@ -30,6 +30,7 @@ from .ollama import (
     OllamaConfig,
     OllamaError,
 )
+from .env import load_dotenv
 from .result import WorkerResponse
 from .sandbox import GitSandbox, SandboxError
 from .task import DelegationTask, context_path_and_range, normalize_relative_path
@@ -104,7 +105,7 @@ class CodexCliConfig:
     # Kept as a provider label for preflight and telemetry. The worker uses a
     # temporary custom Codex provider instead of the legacy --oss flags.
     local_provider: str = "ollama-chat"
-    provider_id: str = "lcd-ollama"
+    provider_id: str = "ar-ollama"
     # Current Codex CLI releases require the Responses wire API. Older Codex
     # releases accepted ``chat``; keep that value as an explicit compatibility
     # override rather than making it the default for a fresh install.
@@ -142,45 +143,46 @@ class CodexCliConfig:
 
     @classmethod
     def from_env(cls) -> "CodexCliConfig":
+        load_dotenv()
         return cls(
-            executable=os.environ.get("LCD_CODEX_BIN", _default_executable()),
+            executable=os.environ.get("AR_CODEX_BIN", _default_executable()),
             local_provider=os.environ.get(
-                "LCD_CODEX_LOCAL_PROVIDER", "ollama-chat"
+                "AR_CODEX_LOCAL_PROVIDER", "ollama-chat"
             ),
-            provider_id=os.environ.get("LCD_CODEX_PROVIDER_ID", "lcd-ollama"),
-            wire_api=os.environ.get("LCD_CODEX_WIRE_API", "responses"),
+            provider_id=os.environ.get("AR_CODEX_PROVIDER_ID", "ar-ollama"),
+            wire_api=os.environ.get("AR_CODEX_WIRE_API", "responses"),
             default_model=os.environ.get(
-                "LCD_CODEX_MODEL", DEFAULT_OLLAMA_MODEL
+                "AR_CODEX_MODEL", DEFAULT_OLLAMA_MODEL
             ),
             reasoning_effort=os.environ.get(
-                "LCD_CODEX_REASONING_EFFORT", "low"
+                "AR_CODEX_REASONING_EFFORT", "low"
             ),
             sandbox=os.environ.get(
-                "LCD_CODEX_SANDBOX", "danger-full-access"
+                "AR_CODEX_SANDBOX", "danger-full-access"
             ),
             ollama_host=os.environ.get(
-                "LCD_CODEX_OLLAMA_HOST", "http://localhost:11434"
+                "AR_CODEX_OLLAMA_HOST", "http://localhost:11434"
             ),
-            timeout_seconds=_env_float("LCD_CODEX_TIMEOUT_SECONDS", 180.0),
+            timeout_seconds=_env_float("AR_CODEX_TIMEOUT_SECONDS", 180.0),
             idle_timeout_seconds=_env_float(
-                "LCD_CODEX_IDLE_TIMEOUT_SECONDS", 90.0
+                "AR_CODEX_IDLE_TIMEOUT_SECONDS", 90.0
             ),
             require_model_present=_env_bool(
-                "LCD_CODEX_REQUIRE_MODEL_PRESENT", True
+                "AR_CODEX_REQUIRE_MODEL_PRESENT", True
             ),
-            probe_version=_env_bool("LCD_CODEX_PROBE_VERSION", True),
-            output_schema=_env_bool("LCD_CODEX_OUTPUT_SCHEMA", False),
-            retry_model=(os.environ.get("LCD_CODEX_RETRY_MODEL") or None),
-            compat_proxy_enabled=_env_bool("LCD_CODEX_COMPAT_PROXY", True),
+            probe_version=_env_bool("AR_CODEX_PROBE_VERSION", True),
+            output_schema=_env_bool("AR_CODEX_OUTPUT_SCHEMA", False),
+            retry_model=(os.environ.get("AR_CODEX_RETRY_MODEL") or None),
+            compat_proxy_enabled=_env_bool("AR_CODEX_COMPAT_PROXY", True),
             disable_reasoning=_env_bool(
-                "LCD_CODEX_DISABLE_REASONING", True
+                "AR_CODEX_DISABLE_REASONING", True
             ),
-            strip_tools=_env_bool("LCD_CODEX_STRIP_TOOLS", True),
-            compact_prompt=_env_bool("LCD_CODEX_COMPACT_PROMPT", True),
-            ollama_num_ctx=_env_int("LCD_CODEX_NUM_CTX", 8192),
-            ollama_num_predict=_env_int("LCD_CODEX_NUM_PREDICT", None),
-            ollama_temperature=_env_float("LCD_CODEX_TEMPERATURE", 0.0),
-            ollama_seed=_env_int("LCD_CODEX_SEED", None),
+            strip_tools=_env_bool("AR_CODEX_STRIP_TOOLS", True),
+            compact_prompt=_env_bool("AR_CODEX_COMPACT_PROMPT", True),
+            ollama_num_ctx=_env_int("AR_CODEX_NUM_CTX", 8192),
+            ollama_num_predict=_env_int("AR_CODEX_NUM_PREDICT", None),
+            ollama_temperature=_env_float("AR_CODEX_TEMPERATURE", 0.0),
+            ollama_seed=_env_int("AR_CODEX_SEED", None),
         )
 
 
@@ -1436,7 +1438,7 @@ class CodexCliWorker:
 
         if not re.fullmatch(r"[A-Za-z0-9_-]+", self.config.provider_id):
             raise CodexCliError(
-                "LCD_CODEX_PROVIDER_ID must contain only letters, digits, "
+                "AR_CODEX_PROVIDER_ID must contain only letters, digits, "
                 "underscore, or hyphen"
             )
         if self.config.wire_api not in {"chat", "responses"}:
@@ -1730,7 +1732,7 @@ class CodexCliWorker:
         retry: RetryEvidence | None = None,
     ) -> WorkerResponse:
         started = time.perf_counter()
-        codex_home = Path(tempfile.mkdtemp(prefix="lcd-codex-home-"))
+        codex_home = Path(tempfile.mkdtemp(prefix="ar-codex-home-"))
         compat_proxy: OllamaCompatProxy | None = None
         try:
             requested_model = task.model or self.model
@@ -1777,7 +1779,7 @@ class CodexCliWorker:
             with sandbox_context as sandbox:
                 if sandbox.path is None:
                     raise CodexCliError("Codex sandbox did not expose a path")
-                final_message_path = sandbox.path / ".lcd-codex-final-message.txt"
+                final_message_path = sandbox.path / ".ar-codex-final-message.txt"
                 output_schema_path: Path | None = None
                 if self.config.output_schema:
                     output_schema_path = codex_home / "result.schema.json"

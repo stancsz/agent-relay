@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import ssl
 import sys
 import time
 import urllib.parse
@@ -30,7 +31,10 @@ def request_json(url: str, method: str, token: str | None, body: bytes | None = 
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        context = None
+        if url.lower().startswith("https://"):
+            context = ssl.create_default_context(cafile=os.environ.get("CLAUDE_A2A_CA_CERT"))
+        with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
             return response.status, json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode("utf-8", errors="replace")

@@ -45,15 +45,15 @@ def resolve_codex_executable(value: str | None = None) -> str:
 
     candidate = (
         value
-        or os.environ.get("LCD_BASELINE_CODEX_BIN")
-        or os.environ.get("LCD_CODEX_BIN")
+        or os.environ.get("AR_BASELINE_CODEX_BIN")
+        or os.environ.get("AR_CODEX_BIN")
         or shutil.which("codex.cmd")
         or shutil.which("codex")
     )
     if not candidate:
         raise FileNotFoundError(
             "Codex CLI was not found; pass --codex-bin or set "
-            "LCD_BASELINE_CODEX_BIN"
+            "AR_BASELINE_CODEX_BIN"
         )
     return candidate
 
@@ -214,7 +214,7 @@ def _run_case(
                 raise SandboxError("baseline sandbox did not expose a path")
             sandbox_mode = sandbox.mode
             context = collect_context(sandbox.path, task)
-            final_path = sandbox.path / ".lcd-baseline-final-message.txt"
+            final_path = sandbox.path / ".ar-baseline-final-message.txt"
             command = [
                 config.executable,
                 "exec",
@@ -421,7 +421,7 @@ def run_codex_baseline_suite(
     artifact_root = (
         Path(artifact_dir).resolve()
         if artifact_dir is not None
-        else Path(tempfile.mkdtemp(prefix="lcd-codex-baseline-"))
+        else Path(tempfile.mkdtemp(prefix="ar-codex-baseline-"))
     )
     artifact_root.mkdir(parents=True, exist_ok=True)
     checkpoint = Path(checkpoint_path).resolve() if checkpoint_path else None

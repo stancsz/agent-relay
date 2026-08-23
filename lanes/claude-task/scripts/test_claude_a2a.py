@@ -16,7 +16,13 @@ from pathlib import Path
 
 from a2a_protocol import ProtocolError, build_task, digest_without_context_digest, validate_task
 import claude_a2a_server as a2a_server
-from claude_a2a_server import A2AServer, A2AState, is_client_disconnect, is_native_capability_failure
+from claude_a2a_server import (
+    A2AServer,
+    A2AState,
+    build_cli_delegate_command,
+    is_client_disconnect,
+    is_native_capability_failure,
+)
 import claude_mcp_delegate as mcp_delegate
 
 
@@ -36,6 +42,25 @@ def git(*args: str, cwd: Path) -> None:
     result = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
     if result.returncode:
         raise AssertionError(result.stderr)
+
+
+def test_cli_fallback_repeats_target_path_flags() -> None:
+    command = build_cli_delegate_command(
+        delegate=Path("delegate.ps1"),
+        workspace=Path("workspace"),
+        prompt_path=Path("prompt.txt"),
+        result_path=Path("receipt.json"),
+        allowed_tools="Read,Edit,Write",
+        target_paths=["README.md", "GOAL.md"],
+        expected_change=False,
+        timeout_seconds=30,
+    )
+
+    assert command.count("-TargetPath") == 2
+    assert command[command.index("-TargetPath") + 1] == "README.md"
+    second = command.index("-TargetPath", command.index("-TargetPath") + 1)
+    assert command[second + 1] == "GOAL.md"
+    assert "README.md" not in command[second + 2 :]
 
 
 def test_agent_type_default_omission() -> None:

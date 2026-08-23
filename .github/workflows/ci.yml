@@ -17,6 +17,22 @@ jobs:
         run: python -m pip install --editable ".[dev]"
       - name: Validate skill
         run: python scripts/validate_skill.py skills/agent-relay
+      - name: Rebuild skill package
+        run: python scripts/build_skill_package.py
+      - name: Check skill package is committed
+        shell: pwsh
+        run: git diff --exit-code -- agent-relay.skill src/agent_relay/_skill/agent-relay.skill
+      - name: Validate packaged skill
+        run: python scripts/validate_skill_package.py agent-relay.skill skills/agent-relay
+      - name: Build and smoke wheel
+        shell: pwsh
+        run: |
+          python -m pip wheel --no-deps --wheel-dir dist .
+          python -m venv .wheel-venv
+          $wheel = (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+          .\.wheel-venv\Scripts\python.exe -m pip install --no-deps $wheel
+          .\.wheel-venv\Scripts\agent-relay.exe --help
+          .\.wheel-venv\Scripts\agent-relay.exe lanes --json
       - name: Compile Python
         shell: pwsh
         run: python -m compileall -q src tests evals

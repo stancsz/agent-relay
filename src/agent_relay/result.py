@@ -16,6 +16,9 @@ class ResultStatus(str, Enum):
     TIMEOUT = "TIMEOUT"
 
 
+RECEIPT_PROTOCOL = "agent-relay/0.2"
+
+
 @dataclass(frozen=True)
 class VerificationResult:
     command: str
@@ -88,7 +91,8 @@ class DelegationResult:
         return self.status is ResultStatus.SUCCESS
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
+            "protocol": RECEIPT_PROTOCOL,
             "task_id": self.task_id,
             "status": self.status.value,
             "summary": self.summary,
@@ -101,6 +105,10 @@ class DelegationResult:
             "sandbox_mode": self.sandbox_mode,
             "metadata": self.metadata,
         }
+        lane = self.metadata.get("lane")
+        if isinstance(lane, str) and lane:
+            payload["lane"] = lane
+        return payload
 
     def to_handoff(self, *, patch_artifact: str | None = None) -> dict[str, Any]:
         """Return a compact frontier-facing proof packet without patch text.
@@ -138,6 +146,7 @@ class DelegationResult:
             if isinstance(runtime, Mapping):
                 last_runtime = runtime
         handoff: dict[str, Any] = {
+            "protocol": RECEIPT_PROTOCOL,
             "task_id": self.task_id,
             "status": self.status.value,
             "summary": self.summary[:160],
@@ -148,6 +157,9 @@ class DelegationResult:
                 "bytes": patch_bytes,
             },
         }
+        lane = self.metadata.get("lane")
+        if isinstance(lane, str) and lane:
+            handoff["lane"] = lane
         if self.attempts != 1:
             handoff["attempts"] = self.attempts
         if self.blockers:

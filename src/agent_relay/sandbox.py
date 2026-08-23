@@ -37,7 +37,7 @@ class GitSandbox:
     def __enter__(self) -> GitSandbox:
         if not self.source_repo.is_dir():
             raise SandboxError(f"repository path is not a directory: {self.source_repo}")
-        self.root = Path(tempfile.mkdtemp(prefix="lcd-sandbox-"))
+        self.root = Path(tempfile.mkdtemp(prefix="ar-sandbox-"))
         clean_git = self._has_clean_commit()
         if clean_git:
             self.mode = "worktree"

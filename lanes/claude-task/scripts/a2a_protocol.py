@@ -14,6 +14,7 @@ STATUSES = {"done", "partial", "blocked", "failed"}
 MAX_PACKET_BYTES = 200_000
 MAX_OBJECTIVE_CHARS = 4_000
 MAX_TEXT_CHARS = 12_000
+MAX_PATCH_CHARS = 100_000
 MAX_EXCERPT_CHARS = 12_000
 MAX_ITEMS = 16
 MAX_CRITERIA = 12
@@ -104,7 +105,7 @@ def validate_task(packet: Any) -> dict[str, Any]:
     _require_keys(
         packet,
         {"protocol", "task_id", "caller_role", "target_role", "operation", "workspace", "objective", "acceptance_criteria", "constraints", "inputs", "context_digest"},
-        {"protocol", "task_id", "caller_role", "target_role", "operation", "workspace", "objective", "acceptance_criteria", "constraints", "inputs", "team", "profile", "goal_id", "skill_refs", "memory_query", "remember", "expected_change", "context_digest"},
+        {"protocol", "task_id", "caller_role", "target_role", "operation", "workspace", "objective", "acceptance_criteria", "constraints", "verification", "inputs", "team", "profile", "goal_id", "skill_refs", "memory_query", "remember", "expected_change", "context_digest"},
         "task",
     )
     if packet["protocol"] != PROTOCOL:
@@ -183,6 +184,8 @@ def validate_task(packet: Any) -> dict[str, Any]:
     _text(packet["objective"], "objective", MAX_OBJECTIVE_CHARS)
     _bounded_string_list(packet["acceptance_criteria"], "acceptance_criteria", MAX_CRITERIA, MAX_TEXT_CHARS)
     _bounded_string_list(packet["constraints"], "constraints", MAX_CONSTRAINTS, MAX_TEXT_CHARS)
+    if "verification" in packet:
+        _bounded_string_list(packet["verification"], "verification", MAX_CRITERIA, MAX_TEXT_CHARS)
     inputs = packet["inputs"]
     if not isinstance(inputs, list) or len(inputs) > MAX_ITEMS:
         raise ProtocolError(f"inputs must contain at most {MAX_ITEMS} items")
@@ -214,7 +217,7 @@ def validate_result(result: Any) -> dict[str, Any]:
     _require_keys(
         result,
         {"protocol", "task_id", "target_role", "status", "output", "changed_paths", "evidence", "context_digest"},
-        {"protocol", "task_id", "target_role", "status", "output", "changed_paths", "evidence", "context_digest", "server_receipt"},
+        {"protocol", "task_id", "target_role", "status", "output", "changed_paths", "evidence", "context_digest", "server_receipt", "patch"},
         "result",
     )
     if result["protocol"] != PROTOCOL or result["target_role"] not in TARGET_ROLES or result["status"] not in STATUSES:
@@ -236,6 +239,8 @@ def validate_result(result: Any) -> dict[str, Any]:
             raise ProtocolError(f"result.evidence[{index}] contains unknown keys")
         _text(item.get("kind", ""), f"result.evidence[{index}].kind", 80)
         _text(item.get("summary", ""), f"result.evidence[{index}].summary", 2_000)
+    if "patch" in result and (not isinstance(result["patch"], str) or len(result["patch"]) > MAX_PATCH_CHARS):
+        raise ProtocolError(f"result.patch must be at most {MAX_PATCH_CHARS} characters")
     if not isinstance(result["context_digest"], str) or not re.fullmatch(r"[0-9a-f]{64}", result["context_digest"]):
         raise ProtocolError("result.context_digest must be a lowercase SHA-256 digest")
     return result

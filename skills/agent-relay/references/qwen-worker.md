@@ -1,6 +1,6 @@
 ---
 name: agent-relay-qwen-worker
-description: Delegate bounded, low-level coding work from Codex to a second Codex CLI execution harness backed by an Ollama-hosted Qwen model. Use when Codex should offload mechanical, explicitly verifiable edits, construct delegation contracts, run lcd delegate or lcd batch, write delegation prompts, or reduce frontier-token usage without weakening sandbox, scope, or test verification.
+description: Delegate bounded, low-level coding work from Codex to a second Codex CLI execution harness backed by an Ollama-hosted Qwen model. Use when Codex should offload mechanical, explicitly verifiable edits, construct delegation contracts, run agent-relay delegate or agent-relay batch, write delegation prompts, or reduce frontier-token usage without weakening sandbox, scope, or test verification.
 ---
 
 # Agent Relay Qwen Worker Reference
@@ -26,7 +26,7 @@ before building a worker prompt. Use the deterministic triage command as the
 default gate:
 
 ```powershell
-lcd triage --task .\task.json `
+agent-relay triage --task .\task.json `
   --avoided-tokens 1800 --spent-tokens 600
 ```
 
@@ -87,36 +87,36 @@ one child a broad project goal.
 
 ## Configure the local execution lane
 
-Run the project environment's `lcd doctor` first. The exact model must already be
+Run the project environment's `agent-relay doctor` first. The exact model must already be
 installed at the configured Ollama host; the harness rejects implicit pulls.
 
 ```powershell
-$env:LCD_CODEX_OLLAMA_HOST = "http://localhost:11434"
-$env:LCD_CODEX_LOCAL_PROVIDER = "ollama-chat"
-$env:LCD_CODEX_PROVIDER_ID = "lcd-ollama"
-$env:LCD_CODEX_WIRE_API = "responses"
-$env:LCD_CODEX_SANDBOX = "danger-full-access"
-$env:LCD_CODEX_MODEL = "qwen3.5:4b"
-$env:LCD_CODEX_REASONING_EFFORT = "low"
-$env:LCD_CODEX_TIMEOUT_SECONDS = "180"
-$env:LCD_CODEX_IDLE_TIMEOUT_SECONDS = "90"
-$env:LCD_CODEX_COMPAT_PROXY = "true"
-$env:LCD_CODEX_DISABLE_REASONING = "true"
-$env:LCD_CODEX_STRIP_TOOLS = "true"
-$env:LCD_CODEX_COMPACT_PROMPT = "true"
-$env:LCD_CODEX_OUTPUT_SCHEMA = "false"
+$env:AR_CODEX_OLLAMA_HOST = "http://localhost:11434"
+$env:AR_CODEX_LOCAL_PROVIDER = "ollama-chat"
+$env:AR_CODEX_PROVIDER_ID = "ar-ollama"
+$env:AR_CODEX_WIRE_API = "responses"
+$env:AR_CODEX_SANDBOX = "danger-full-access"
+$env:AR_CODEX_MODEL = "qwen3.5:4b"
+$env:AR_CODEX_REASONING_EFFORT = "low"
+$env:AR_CODEX_TIMEOUT_SECONDS = "180"
+$env:AR_CODEX_IDLE_TIMEOUT_SECONDS = "90"
+$env:AR_CODEX_COMPAT_PROXY = "true"
+$env:AR_CODEX_DISABLE_REASONING = "true"
+$env:AR_CODEX_STRIP_TOOLS = "true"
+$env:AR_CODEX_COMPACT_PROMPT = "true"
+$env:AR_CODEX_OUTPUT_SCHEMA = "false"
 # Keep bounded tasks at an 8192-token provider context. Override only after
 # the exact Ollama-compatible lane has passed a live smoke with that setting.
-$env:LCD_CODEX_NUM_CTX = "8192"
+$env:AR_CODEX_NUM_CTX = "8192"
 # Keep sampling deterministic when collecting comparable evals.
-$env:LCD_CODEX_TEMPERATURE = "0"
+$env:AR_CODEX_TEMPERATURE = "0"
 # Optional fixed seed for reproducible benchmark cohorts.
-# $env:LCD_CODEX_SEED = "17"
-# $env:LCD_CODEX_NUM_PREDICT = "2048"
+# $env:AR_CODEX_SEED = "17"
+# $env:AR_CODEX_NUM_PREDICT = "2048"
 # Optional: explicitly pin the one bounded retry to the same target model:
-$env:LCD_CODEX_RETRY_MODEL = "qwen3.5:4b"
-lcd doctor --smoke --model qwen3.5:4b
-lcd doctor --codex-smoke --model qwen3.5:4b
+$env:AR_CODEX_RETRY_MODEL = "qwen3.5:4b"
+agent-relay doctor --smoke --model qwen3.5:4b
+agent-relay doctor --codex-smoke --model qwen3.5:4b
 ```
 
 The harness also defaults to `low` reasoning when the environment variable is
@@ -128,9 +128,9 @@ an advertised 262k context does not consume excessive local memory for a small
 task. Treat this as a runtime reliability bound, not as measured Codex token
 savings.
 
-`lcd doctor --smoke` proves only that the Ollama HTTP API can answer. Before a
+`agent-relay doctor --smoke` proves only that the Ollama HTTP API can answer. Before a
 Codex-backed batch or a new model/provider combination, require
-`lcd doctor --codex-smoke` to return `ok: true`. That probe runs one mechanical
+`agent-relay doctor --codex-smoke` to return `ok: true`. That probe runs one mechanical
 edit in a temporary Git repository through the complete Codex CLI, Ollama,
 sandbox, patch, and verification path, with the same one-retry recovery contract
 used by normal bounded delegation. Its caps are 120 seconds total and 90 seconds
@@ -140,19 +140,19 @@ bounded task through direct `--backend ollama` when appropriate, or keep it in
 the parent. Do not spend a full task timeout or bypass triage with
 `--allow-untriaged` to work around a failed capability probe.
 
-The default `lcd-ollama` lane uses the current Codex Responses wire API, which
+The default `ar-ollama` lane uses the current Codex Responses wire API, which
 Ollama serves directly. The loopback proxy remains available for legacy
 Chat-Completions Codex releases; only that `chat` lane can claim provider-side
 tool stripping, reasoning disabling, and prompt compaction. This is still Codex
 CLI as the execution harness, but it is not evidence that Qwen executed Codex
 tools. The result will normally be a bounded `reported_patch` or
 `reported_files` candidate that the outer sandbox applies and verifies. Set
-`LCD_CODEX_STRIP_TOOLS=false` only after the selected model has passed its own
+`AR_CODEX_STRIP_TOOLS=false` only after the selected model has passed its own
 live smoke with tools enabled.
 
-`LCD_CODEX_LOCAL_PROVIDER=ollama-chat` is retained as a compatibility label in
-preflight telemetry; the actual temporary Codex provider is `lcd-ollama` with
-the configured `LCD_CODEX_WIRE_API`.
+`AR_CODEX_LOCAL_PROVIDER=ollama-chat` is retained as a compatibility label in
+preflight telemetry; the actual temporary Codex provider is `ar-ollama` with
+the configured `AR_CODEX_WIRE_API`.
 
 Keep native output-schema mode off on runtimes that return an empty final
 message; the normal prompt/parser path remains the stable contract. Do not count
@@ -212,8 +212,8 @@ definition. Read
 Use a compact handoff and keep the full patch in an artifact:
 
 ```powershell
-$artifact = Join-Path $env:TEMP "lcd-task.patch"
-lcd delegate --backend codex-ollama --model qwen3.5:4b `
+$artifact = Join-Path $env:TEMP "ar-task.patch"
+agent-relay delegate --backend codex-ollama --model qwen3.5:4b `
   --task .\task.json --repo . --compact --patch-out $artifact `
   --require-triage --avoided-tokens 1800 --spent-tokens 600
 ```
@@ -223,10 +223,10 @@ packet while every task still receives its own sandbox, scope check, and
 verification:
 
 ```powershell
-lcd batch --manifest .\batch.json --repo . --model qwen3.5:4b `
+agent-relay batch --manifest .\batch.json --repo . --model qwen3.5:4b `
   --aggregate --sample 3 --manifest-mode thin `
   --require-triage `
-  --artifact-dir (Join-Path $env:TEMP "lcd-batch-artifacts")
+  --artifact-dir (Join-Path $env:TEMP "ar-batch-artifacts")
 ```
 
 With `--require-triage`, each manifest entry must provide its own economics or
@@ -290,7 +290,7 @@ failure and verification evidence, use a clean sandbox, and make the smallest
 repair. Retry only a concrete recoverable candidate or deterministic verifier
 failure, such as malformed output, a summary-only response, or a failing test
 whose repair remains inside the original scope. Escalate to
-`LCD_CODEX_RETRY_MODEL` only for a useful, bounded retry. Do not retry malformed
+`AR_CODEX_RETRY_MODEL` only for a useful, bounded retry. Do not retry malformed
 setup, missing-model, provider-pull, scope, ambiguous-contract, or no-progress
 timeout failures blindly; repair the lane or take the task back. After one
 unsuccessful retry, take the task back into the parent Codex context.

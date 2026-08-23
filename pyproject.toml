@@ -15,11 +15,13 @@ dev = ["pytest>=8"]
 
 [project.scripts]
 agent-relay = "agent_relay.cli:main"
-lcd = "agent_relay.cli:main"
 subagent = "agent_relay.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+agent_relay = ["_skill/*.skill"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

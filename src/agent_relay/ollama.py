@@ -8,6 +8,8 @@ from typing import Any, Mapping
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from .env import load_dotenv
+
 
 DEFAULT_OLLAMA_MODEL = "qwen3.5:4b"
 
@@ -31,6 +33,7 @@ class OllamaConfig:
 
     @classmethod
     def from_env(cls) -> OllamaConfig:
+        load_dotenv()
         host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").strip()
         default_model = (
             os.environ.get("LOCAL_MODEL")

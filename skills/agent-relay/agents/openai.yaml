@@ -1,0 +1,7 @@
+interface:
+  display_name: "Agent Relay"
+  short_description: "Route bounded agent work with proof and review"
+  default_prompt: "Use $agent-relay to route a bounded task through a verified specialist lane."
+
+policy:
+  allow_implicit_invocation: true

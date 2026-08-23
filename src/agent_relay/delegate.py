@@ -408,6 +408,8 @@ def _result(
     sandbox_mode: str | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> DelegationResult:
+    receipt_metadata = dict(metadata or {})
+    receipt_metadata.setdefault("lane", "local-qwen")
     return DelegationResult(
         task_id=task.task_id,
         status=status,
@@ -419,7 +421,7 @@ def _result(
         attempts=attempts,
         duration_seconds=time.perf_counter() - started,
         sandbox_mode=sandbox_mode,
-        metadata=metadata or {},
+        metadata=receipt_metadata,
     )
 
 
@@ -713,7 +715,7 @@ def delegate_local(
         )
     if task is None:
         task = DelegationTask(
-            task_id=f"lcd-{int(time.time() * 1000)}",
+            task_id=f"ar-{int(time.time() * 1000)}",
             objective=objective or "",
             allowed_files=tuple(allowed_files or ()),
             context=tuple(context or ()),

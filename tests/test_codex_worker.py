@@ -132,13 +132,13 @@ def _fake_config() -> CodexCliConfig:
 def test_codex_cli_defaults_to_low_reasoning_for_bounded_tasks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("LCD_CODEX_REASONING_EFFORT", raising=False)
+    monkeypatch.delenv("AR_CODEX_REASONING_EFFORT", raising=False)
     config = CodexCliConfig.from_env()
 
     assert config.reasoning_effort == "low"
     assert config.timeout_seconds == 180.0
     assert config.idle_timeout_seconds == 90.0
-    assert config.provider_id == "lcd-ollama"
+    assert config.provider_id == "ar-ollama"
     assert config.wire_api == "responses"
     assert config.sandbox == "danger-full-access"
     assert config.compat_proxy_enabled is True
@@ -152,7 +152,7 @@ def test_codex_cli_defaults_to_low_reasoning_for_bounded_tasks(
 
 
 def test_codex_context_bound_can_be_overridden(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("LCD_CODEX_NUM_CTX", "16384")
+    monkeypatch.setenv("AR_CODEX_NUM_CTX", "16384")
 
     config = CodexCliConfig.from_env()
 
@@ -462,8 +462,8 @@ def test_codex_worker_uses_custom_provider_instead_of_legacy_oss_flags(
         model="qwen3.5:4b",
         provider_base_url="http://127.0.0.1:34567",
     )
-    assert 'model_provider = "lcd-ollama"' in config_text
-    assert '[model_providers."lcd-ollama"]' in config_text
+    assert 'model_provider = "ar-ollama"' in config_text
+    assert '[model_providers."ar-ollama"]' in config_text
     assert 'base_url = "http://127.0.0.1:34567/v1"' in config_text
     assert 'wire_api = "responses"' in config_text
     assert "oss_provider" not in config_text
@@ -597,7 +597,7 @@ def test_codex_worker_records_and_cleans_up_compat_proxy(
         "--- value.py ---\nVALUE = 1\n",
     )
 
-    assert result.runtime["codex_provider_id"] == "lcd-ollama"
+    assert result.runtime["codex_provider_id"] == "ar-ollama"
     assert result.runtime["codex_wire_api"] == "chat"
     assert result.runtime["compat_proxy_enabled"] is True
     assert result.runtime["compat_proxy_target"] == "http://127.0.0.1:11435"

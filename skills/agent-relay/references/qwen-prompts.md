@@ -1,7 +1,7 @@
 # Codex/Qwen prompt kit
 
 Use these prompts as canonical templates when changing the delegation protocol or
-calling the child Codex CLI directly. When using `lcd delegate --backend
+calling the child Codex CLI directly. When using `agent-relay delegate --backend
 codex-ollama`, the runner already supplies the child execution contract; do not
 paste the child prompt into the task objective a second time.
 
@@ -41,7 +41,7 @@ WHY: <one sentence>
 
 After the record passes, invoke the CLI with `--require-triage` and the same
 token estimates. For the Codex CLI backend, `CODEX_LANE_HEALTH` must be `PASS`
-from a recent `lcd doctor --codex-smoke` for the selected model/provider. A
+from a recent `agent-relay doctor --codex-smoke` for the selected model/provider. A
 failed or unknown lane-health probe routes the task to direct Ollama or keeps it
 in the parent; it is not a reason to use `--allow-untriaged`.
 
@@ -73,7 +73,7 @@ Codex-only baseline.
 The batch path must be triage-enforced:
 
 ```powershell
-lcd batch --manifest .\batch.json --repo . --require-triage `
+agent-relay batch --manifest .\batch.json --repo . --require-triage `
   --aggregate --sample 3 --manifest-mode thin `
   --avoided-tokens 1800 --spent-tokens 600
 ```

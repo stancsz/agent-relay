@@ -1480,7 +1480,7 @@ def run_suite(
         artifact_root = (
             Path(artifact_dir).resolve()
             if artifact_dir is not None
-            else Path(tempfile.mkdtemp(prefix="lcd-eval-artifacts-"))
+            else Path(tempfile.mkdtemp(prefix="ar-eval-artifacts-"))
         )
         artifact_root.mkdir(parents=True, exist_ok=True)
         evidence_path = artifact_root / "full-records.json"
@@ -1723,7 +1723,7 @@ def reprice_frontier_economics(
     artifact_root = (
         Path(artifact_dir).resolve()
         if artifact_dir is not None
-        else Path(tempfile.mkdtemp(prefix="lcd-reprice-artifacts-"))
+        else Path(tempfile.mkdtemp(prefix="ar-reprice-artifacts-"))
     )
     artifact_root.mkdir(parents=True, exist_ok=True)
     evidence_path = artifact_root / "full-records.json"

@@ -63,7 +63,16 @@ function Get-FileFingerprint {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         return 'missing'
     }
-    return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+    # Use the .NET API instead of Get-FileHash. The legacy Windows PowerShell
+    # host used by the Claude adapter may not load Microsoft.PowerShell.Utility
+    # even though PowerShell 7 exposes that cmdlet.
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.IO.File]::ReadAllBytes($path)
+        return ([System.BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace('-', '')
+    } finally {
+        $sha256.Dispose()
+    }
 }
 
 function Get-RepoSnapshot {
@@ -107,9 +116,36 @@ if (-not (Test-Path -LiteralPath $WorkingDirectory -PathType Container)) {
 }
 
 $WorkingDirectory = (Resolve-Path -LiteralPath $WorkingDirectory).Path
-$null = & cmd.exe /d /c where claude.cmd 2>$null
-if ($LASTEXITCODE -ne 0) {
-    throw 'claude.cmd was not found on PATH. Fix the Claude CLI installation or PATH before delegating.'
+$claudeCommand = if ([string]::IsNullOrWhiteSpace($env:AR_CLAUDE_BIN)) { 'claude.cmd' } else { $env:AR_CLAUDE_BIN }
+$claudeAvailable = $true
+if ([IO.Path]::IsPathRooted($claudeCommand)) {
+    if (-not (Test-Path -LiteralPath $claudeCommand -PathType Leaf)) {
+        $claudeAvailable = $false
+    }
+} else {
+    $null = & cmd.exe /d /c where $claudeCommand 2>$null
+    $claudeAvailable = $LASTEXITCODE -eq 0
+}
+
+function Remove-PredictableVerificationArtifacts {
+    # Verification commands commonly create interpreter caches. These are
+    # adapter-generated artifacts, not candidate task edits; remove only the
+    # known cache names inside the disposable worker workspace before taking
+    # the authoritative scope snapshot.
+    $cacheDirectories = @('__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache')
+    foreach ($directory in Get-ChildItem -LiteralPath $WorkingDirectory -Directory -Recurse -Force -ErrorAction SilentlyContinue) {
+        if ($cacheDirectories -contains $directory.Name) {
+            Remove-Item -LiteralPath $directory.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+    foreach ($file in Get-ChildItem -LiteralPath $WorkingDirectory -File -Recurse -Force -ErrorAction SilentlyContinue) {
+        if ($file.Name -like '*.pyc' -or $file.Name -eq '.coverage') {
+            Remove-Item -LiteralPath $file.FullName -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+if (-not $claudeAvailable) {
+    throw "$claudeCommand was not found on PATH. Fix the Claude CLI installation or set AR_CLAUDE_BIN before delegating."
 }
 
 if ($PSCmdlet.ParameterSetName -eq 'PromptFile') {
@@ -188,7 +224,7 @@ if ($Transport -eq 'Mcp') {
         try { $mcpReceipt = $stdout.Trim() | ConvertFrom-Json } catch { $mcpTransportError = $_.Exception.Message }
     }
 } else {
-    $claudeArgs = @('claude.cmd', '-p', '--no-session-persistence', '--output-format', 'json', '--allowed-tools', $AllowedTools)
+    $claudeArgs = @($claudeCommand, '-p', '--no-session-persistence', '--output-format', 'json', '--allowed-tools', $AllowedTools)
     if (-not [string]::IsNullOrWhiteSpace($Model)) { $claudeArgs += @('--model', $Model) }
     if ($null -ne $BudgetUsd) { $claudeArgs += @('--max-budget-usd', ([decimal]$BudgetUsd).ToString([Globalization.CultureInfo]::InvariantCulture)) }
     $psi = [Diagnostics.ProcessStartInfo]::new()
@@ -206,7 +242,7 @@ if ($Transport -eq 'Mcp') {
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $psi
     try {
-        if (-not $process.Start()) { throw 'Failed to start claude.cmd.' }
+        if (-not $process.Start()) { throw "Failed to start $claudeCommand." }
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
         $stderrTask = $process.StandardError.ReadToEndAsync()
         $process.StandardInput.Write($Prompt)
@@ -227,6 +263,7 @@ if ($Transport -eq 'Mcp') {
 
 $stopwatch.Stop()
 Start-Sleep -Milliseconds 500
+Remove-PredictableVerificationArtifacts
 $after = Get-RepoSnapshot -Paths $TargetPath
 
 $targetChanged = $false

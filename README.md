@@ -9,25 +9,30 @@ models, Agent Relay routes complete **agent harnesses**: tools, permissions,
 workspaces, sandboxes, task contracts, execution policy, and verification move
 with the selected runtime.
 
-The repository was formerly called **Local Code Delegate**. `lcd` and
-`subagent` remain compatibility command aliases; new usage should prefer
-`agent-relay`.
+`agent-relay` is the canonical command. The `subagent` alias remains available
+for existing integrations; new usage should prefer `agent-relay`.
 
 ## Unified subagent lanes
 
-This repository is now the single home for bounded subagent work. `lcd` and
-`subagent` remain available for compatibility; new integrations should use the
-`agent-relay` CLI and the canonical lane names:
+This repository is the single home for bounded subagent work. New integrations
+should use the `agent-relay` CLI and the canonical lane names:
 
 | Lane | Role | Default | Proof boundary |
 | --- | --- | --- | --- |
 | `local-qwen` | local/free mechanical worker | Qwen3.5:4B through Ollama and Codex CLI | disposable sandbox, scope gate, parent reruns checks |
-| `claude-task` | primary Claude implementation/team worker | authenticated Claude task bridge; optional Agent Teams | task receipt, workspace lock, Git fingerprint |
-| `codex-review` | subscription QA verifier | GPT-5.6 Sol, high reasoning | read-only Codex CLI review receipt |
+| `claude-task` | primary Claude implementation/team worker | authenticated Claude task bridge; optional Agent Teams | disposable Agent Relay sandbox, task receipt, workspace lock, Git fingerprint |
+| `claude-mcp` | remote Claude MCP convenience worker | existing streamable-HTTP Claude MCP server (JSON or SSE) | remote output/transport receipt; no local sandbox claim |
+| `codex-review` | subscription QA verifier | GPT-5.6 Luna, high reasoning | read-only Codex CLI review receipt |
 | `agy-antigravity` | Google-stack scout/planner | Gemini 3.1 Pro, high effort | plan receipt; parent verifies locally |
 
-List lanes with `agent-relay lanes --json`. Run the subscription verifier with
-`agent-relay review --repo . --model gpt-5.6-sol --reasoning-effort high --uncommitted`.
+List configured lanes with `agent-relay lanes --json`. Check local executables,
+Ollama health, and Claude's ephemeral bridge prerequisites with
+`agent-relay lanes --check --json` or `agent-relay doctor --all`. If an
+`AR_CLAUDE_A2A_SERVER_URL` is configured, its `/health` endpoint is also
+probed. Read readiness as `ready`, `degraded`, `blocked`, or `unknown`; an
+executable-only check is `unknown`, not proof of entitlement. Run the
+subscription verifier with
+`agent-relay review --repo . --model gpt-5.6-luna --reasoning-effort high --uncommitted`.
 That command uses the user's existing Codex CLI login; it does not accept an
 API key and it fails explicitly when the model or entitlement is unavailable.
 
@@ -38,6 +43,11 @@ skill is [`skills/agent-relay/SKILL.md`](skills/agent-relay/SKILL.md).
 
 The evidence-backed routing and the latest local readiness results are recorded
 in [`docs/SUBAGENT_ROLES.md`](docs/SUBAGENT_ROLES.md).
+
+The durable coordinator is the next layer above the local adapters. It stores
+task envelopes, lifecycle events, leases, Agent Cards, and terminal receipts in
+SQLite. The default server binds to loopback; use `AR_RELAY_AUTH_TOKEN` and an
+explicit host when exposing it to another machine.
 
 Consult the Google-stack specialist with
 `agent-relay ask --lane agy-antigravity --repo . --prompt "..." --json`. The
@@ -81,7 +91,8 @@ worktree outside the worker's write path.
 | Disposable Git sandbox, patch capture, scope review, verification, retry | Implemented |
 | Compact batch handoff and economics ledger | Implemented |
 | Agent Relay skill and Qwen worker prompt kit | Included |
-| Claude Code task bridge | Integrated under `lanes/claude-task`; run its capability smoke before use |
+| Claude Code task bridge | Integrated as the sandboxed `claude-task` backend; the vendored bridge must be available |
+| Existing Claude MCP server | Integrated as the explicit `claude-mcp` remote-output backend; endpoint readiness must be probed |
 | Antigravity CLI specialist | Integrated as `agy-antigravity`; local CLI smoke is required before use |
 | DeepSeek Harness over Ollama | Planned; no measured result |
 
@@ -157,14 +168,14 @@ The project-level gates are summarized in [GOAL.md](GOAL.md).
 
 ## How delegation works
 
-LCD treats a delegated task as a contract, not as an open-ended chat:
+agent-relay treats a delegated task as a contract, not as an open-ended chat:
 
 1. Frontier Codex triages the task and estimates whether delegation can save
    enough frontier tokens.
-2. LCD sends only the bounded objective, allowed files, read-only context, and
+2. agent-relay sends only the bounded objective, allowed files, read-only context, and
    deterministic verification commands to the local execution lane.
 3. The worker runs in a disposable Git worktree or fixture sandbox.
-4. LCD captures the candidate patch or changed-file content.
+4. agent-relay captures the candidate patch or changed-file content.
 5. The outer verifier checks patch applicability, changed-file scope, and the
    declared tests.
 6. A single bounded retry may run when the failure is recoverable.
@@ -174,6 +185,23 @@ LCD treats a delegated task as a contract, not as an open-ended chat:
 
 The outer supervisor remains authoritative. A worker's self-report is not
 accepted as proof.
+
+### Configurable intelligence escalation
+
+Agent Relay does not send every task to a frontier model. It evaluates explicit
+policy gates—`plan`, `execute`, `review`, `recovery`, and `release`—using
+operational signals such as risk flags, ambiguity, scope, failed attempts,
+missing evidence, and verification state. A matched rule returns one of
+`continue`, `consult`, `require_review`, or `block`.
+
+`continue` keeps the task on the bulk worker path. `consult` summons a
+configured high-intelligence planning or recovery profile; `require_review`
+requires a read-only high verifier before acceptance; and `block` fails closed
+when authority or evidence is insufficient. The policy, profiles, model names,
+and reasoning effort are configurable in a versioned JSON file; a high-model
+receipt never replaces deterministic tests, scope checks, or workspace proof.
+See [`docs/pm/escalation-policy.md`](docs/pm/escalation-policy.md) and the
+example at [`config/escalation.example.json`](config/escalation.example.json).
 
 ### Good delegation candidates
 
@@ -208,6 +236,40 @@ py -3 -m venv .venv
 Requirements are Python 3.11+, Git, a working Codex CLI installation, and
 Ollama.
 
+## Install on another PC
+
+Agent Relay has two installable pieces:
+
+- The Python package provides the `agent-relay` CLI and has no Python runtime
+  dependencies.
+- The Codex skill teaches Codex how to use the bounded routing workflow. The
+  package embeds the same skill archive, so it can be installed without this
+  repository checkout.
+
+From GitHub on Windows:
+
+~~~powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install "git+https://github.com/stancsz/agent-relay.git"
+.\.venv\Scripts\agent-relay.exe skill install
+.\.venv\Scripts\agent-relay.exe lanes --json
+~~~
+
+On macOS or Linux, use the equivalent `python3` and `.venv/bin/agent-relay`
+paths. To install into a non-default Codex directory, set `CODEX_HOME` or pass
+`--destination`. Existing skill files are never overwritten unless `--force`
+is explicit:
+
+~~~text
+agent-relay skill install --force --json
+~~~
+
+The core CLI is portable after Python 3.11+ is installed. Individual lanes have
+their own external prerequisites: the local-Qwen lane needs Ollama and Codex
+CLI, the Claude lane needs Claude Code/authentication, and the AGY lane needs
+the `agy` CLI. Installation does not claim those tools or credentials are
+present.
+
 ### 2. Install and prewarm the exact model
 
 ~~~powershell
@@ -216,7 +278,7 @@ ollama ps
 ~~~
 
 Ollama normally listens on http://localhost:11434. If it is elsewhere, set
-LCD_CODEX_OLLAMA_HOST below. The worker does not pull a model during a
+AR_CODEX_OLLAMA_HOST below. The worker does not pull a model during a
 delegation; an absent model is a setup failure.
 
 ### 3. Configure the Codex-over-Ollama lane
@@ -225,30 +287,30 @@ The defaults are already conservative, but these settings reproduce the
 measured operating profile:
 
 ~~~powershell
-$env:LCD_CODEX_OLLAMA_HOST = "http://localhost:11434"
-$env:LCD_CODEX_MODEL = "qwen3.5:4b"
-$env:LCD_CODEX_LOCAL_PROVIDER = "ollama-chat"
-$env:LCD_CODEX_PROVIDER_ID = "lcd-ollama"
-$env:LCD_CODEX_WIRE_API = "responses"
-$env:LCD_CODEX_REASONING_EFFORT = "low"
-$env:LCD_CODEX_TIMEOUT_SECONDS = "180"
-$env:LCD_CODEX_IDLE_TIMEOUT_SECONDS = "90"
-$env:LCD_CODEX_COMPAT_PROXY = "true"
-$env:LCD_CODEX_DISABLE_REASONING = "true"
-$env:LCD_CODEX_STRIP_TOOLS = "true"
-$env:LCD_CODEX_COMPACT_PROMPT = "true"
-$env:LCD_CODEX_NUM_CTX = "8192"
-$env:LCD_CODEX_NUM_PREDICT = "2048"
-$env:LCD_CODEX_TEMPERATURE = "0"
-$env:LCD_CODEX_SEED = "17"
-$env:LCD_CODEX_OUTPUT_SCHEMA = "false"
-$env:LCD_CODEX_RETRY_MODEL = "qwen3.5:4b"
+$env:AR_CODEX_OLLAMA_HOST = "http://localhost:11434"
+$env:AR_CODEX_MODEL = "qwen3.5:4b"
+$env:AR_CODEX_LOCAL_PROVIDER = "ollama-chat"
+$env:AR_CODEX_PROVIDER_ID = "ar-ollama"
+$env:AR_CODEX_WIRE_API = "responses"
+$env:AR_CODEX_REASONING_EFFORT = "low"
+$env:AR_CODEX_TIMEOUT_SECONDS = "180"
+$env:AR_CODEX_IDLE_TIMEOUT_SECONDS = "90"
+$env:AR_CODEX_COMPAT_PROXY = "true"
+$env:AR_CODEX_DISABLE_REASONING = "true"
+$env:AR_CODEX_STRIP_TOOLS = "true"
+$env:AR_CODEX_COMPACT_PROMPT = "true"
+$env:AR_CODEX_NUM_CTX = "8192"
+$env:AR_CODEX_NUM_PREDICT = "2048"
+$env:AR_CODEX_TEMPERATURE = "0"
+$env:AR_CODEX_SEED = "17"
+$env:AR_CODEX_OUTPUT_SCHEMA = "false"
+$env:AR_CODEX_RETRY_MODEL = "qwen3.5:4b"
 ~~~
 
 If codex on PATH is stale, point the worker at the intended executable:
 
 ~~~powershell
-$env:LCD_CODEX_BIN = "C:\path\to\codex.exe"
+$env:AR_CODEX_BIN = "C:\path\to\codex.exe"
 ~~~
 
 The measured cohort used the current app-managed Codex executable, not a
@@ -257,19 +319,38 @@ legacy --oss --local-provider mode.
 ### 4. Run a capability smoke
 
 ~~~powershell
-lcd doctor --codex-smoke --model qwen3.5:4b --json
+agent-relay doctor --codex-smoke --model qwen3.5:4b --json
 ~~~
 
 Do not start a long evaluation until this reports success. The smoke checks
 the Codex executable, temporary provider, Ollama route, exact model, inner
 sandbox, patch capture, and outer verification.
 
+When Claude Code is available, run the separate Claude gates as well:
+
+~~~powershell
+py -3 scripts\probe_claude_lane.py --timeout 40
+py -3 scripts\smoke_claude_task.py
+py -3 scripts\smoke_claude_cancellation.py
+py -3 scripts\smoke_claude_interruption.py
+~~~
+
+The first command proves authenticated MCP capability discovery. The second
+proves a real bounded Claude edit, parent-owned verification, target-file scope,
+and preservation of the caller worktree. A green bridge health check alone is
+not task-completion evidence. The cancellation smoke exercises the full worker
+plane and requires `cancel_requested` to become a worker-confirmed `cancelled`
+receipt with `execution_stopped: true`.
+The interruption smoke additionally kills a separate worker after `running`,
+waits for lease expiry, and requires a fresh worker to return a verified
+success receipt.
+
 ### 5. Run a bounded task or small evaluation
 
 ~~~powershell
-lcd triage --task .\task.json --avoided-tokens 1800 --spent-tokens 600 --json
-lcd delegate --backend codex-ollama --require-triage --task .\task.json --repo C:\path\to\repo --json
-lcd eval --backend codex-ollama --model qwen3.5:4b --suite bounded-basic --aggregate --sample 3 --json
+agent-relay triage --task .\task.json --avoided-tokens 1800 --spent-tokens 600 --json
+agent-relay delegate --backend codex-ollama --require-triage --task .\task.json --repo C:\path\to\repo --json
+agent-relay eval --backend codex-ollama --model qwen3.5:4b --suite bounded-basic --aggregate --sample 3 --json
 ~~~
 
 The small evaluation is a correctness/transport smoke, not the 97.39%
@@ -318,21 +399,235 @@ security boundary.
 The implemented command surfaces are:
 
 ~~~text
-agent-relay lanes    List the canonical local-qwen, claude-task, codex-review, agy-antigravity lanes
+agent-relay lanes    List the canonical local-qwen, claude-task, claude-mcp, codex-review, agy-antigravity lanes
+agent-relay serve    Run the durable SQLite-backed coordinator
+agent-relay mcp      Expose the durable coordinator through MCP tools
+agent-relay agents   List or register worker Agent Cards
+agent-relay submit   Submit one idempotent bounded task
+agent-relay chain-submit Submit one durable, predecessor-gated follow-up step
+agent-relay watch    Poll or stream a task until a terminal state
+agent-relay inspect  Read one durable task envelope and event history
+agent-relay inspect-chain Read one durable chain and its ordered steps
+agent-relay watch-chain Poll a durable chain until its materialized steps finish
+agent-relay cancel   Request cancellation without claiming execution stopped
+agent-relay resume   Requeue a waiting task after interruption
+agent-relay worker   Run the reference local-Qwen or Claude worker loop
 agent-relay review   Run the read-only Codex subscription QA verifier
 agent-relay ask      Consult the AGY Google-stack specialist in plan mode
 agent-relay doctor   Check Ollama, the exact model, and optional Codex smoke.
 agent-relay triage   Decide DELEGATE, KEEP_LOCAL, or BLOCKED.
-agent-relay delegate Run one bounded task through Ollama or codex-ollama.
+agent-relay delegate Run one bounded task through Ollama, codex-ollama, or claude-task.
 agent-relay eval     Run a declared suite and produce quality/evidence metrics.
 agent-relay baseline Run the matched direct-Codex comparison lane.
 agent-relay batch    Run independent tasks and return one compact handoff.
 agent-relay reprice  Estimate compact-handoff economics for a recorded run.
 
-`subagent` and `lcd` remain compatibility aliases for these command surfaces.
+The `agent-relay` command is canonical for these surfaces; `subagent` remains a
+compatibility alias for existing integrations.
 ~~~
 
-lcd reprice is an estimate of frontier response/handoff accounting. It is not
+## Durable coordinator quick start
+
+Run the coordinator locally:
+
+~~~powershell
+agent-relay serve --db .\relay.sqlite3 --port 8788
+~~~
+
+Submit the same task repeatedly with the same idempotency key; the coordinator
+returns one logical task rather than creating duplicate execution:
+
+~~~powershell
+agent-relay submit --url http://127.0.0.1:8788 --task .\task.json `
+  --idempotency-key task-001 --json
+agent-relay watch task-001 --url http://127.0.0.1:8788
+agent-relay watch task-001 --url http://127.0.0.1:8788 --stream --json
+~~~
+
+For a bounded follow-up, submit a child after the predecessor reaches an
+allowed terminal state, or register it early with `--defer-until-ready`. The
+coordinator persists the linear chain, atomically materializes deferred steps,
+and makes the request idempotent across orchestrator restarts:
+
+~~~powershell
+agent-relay chain-submit --chain-id feature-1 --step-id review --step-index 1 `
+  --task .\review-task.json --predecessor-task-id task-001 `
+  --parent-artifact-id artifact_<patch-id> `
+  --parent-message "Review only the declared patch." --priority 5 `
+  --deadline-at 2027-08-23T00:00:00Z --json
+agent-relay inspect-chain feature-1 --url http://127.0.0.1:8788 --json
+agent-relay watch-chain feature-1 --url http://127.0.0.1:8788 --json
+
+agent-relay chain-submit --chain-id feature-1 --step-id test --step-index 2 `
+  --task .\test-task.json --predecessor-task-id review `
+  --defer-until-ready --json
+~~~
+
+Only explicitly named predecessor artifacts and bounded messages enter the
+child envelope; transcripts and undeclared parent files are never forwarded.
+`--priority` accepts integers from -1000 to 1000; higher values claim first,
+then earlier deadlines. A deadline expires unleased queued work before
+execution; it does not interrupt an already-running worker.
+When a child is leased, the reference worker fetches only those declared
+artifacts, verifies their hash and size, and records the fetch in its receipt.
+Use `POST /chains/{chain_id}/reconcile` after operational repair; the
+coordinator also runs reconciliation at startup.
+
+### MCP façade
+
+Claude MCP is convenient because an MCP client can discover a small tool set
+without learning the underlying HTTP API. Agent Relay provides the same entry
+point while retaining durable task state and worker receipts:
+
+~~~powershell
+agent-relay mcp --coordinator-url http://127.0.0.1:8788 `
+  --coordinator-token $env:AR_RELAY_AUTH_TOKEN `
+  --token $env:AR_RELAY_AUTH_TOKEN --port 8789
+~~~
+
+The `/mcp` endpoint exposes `submit` (plus `run`/`Agent` Claude-MCP-compatible
+aliases), bounded `dispatch`, `inspect`, `watch`, `cancel`, and `chain_submit`.
+Calls may provide a complete bounded task contract or a natural-language
+`prompt`. Prompt calls become durable tasks and are read-only by default;
+callers must explicitly provide `allowed_files` before edits are authorized.
+`dispatch` submits durable tasks with bounded concurrency and can optionally
+wait for terminal snapshots.
+Keep the façade on loopback unless a bearer token and HTTPS-protected
+coordinator path are configured.
+
+For a single-machine convenience mode, add an optional local worker. `run` and
+`Agent` then wait for a terminal receipt by default; `submit` remains an
+asynchronous durable enqueue:
+
+~~~powershell
+agent-relay mcp --coordinator-url http://127.0.0.1:8788 `
+  --coordinator-token $env:AR_RELAY_AUTH_TOKEN `
+  --token $env:AR_RELAY_AUTH_TOKEN `
+  --local-worker-backend claude-task --local-worker-repo C:\work\repo
+~~~
+
+The local worker still uses the normal lease, capability, sandbox, and receipt
+path. Prompt calls may also provide `workdir`: for `local-qwen` and
+`claude-task` it must be an existing directory inside `--local-worker-repo`; for
+`claude-mcp` it is passed as a path on the remote MCP machine. The worker
+records the effective remote directory in the receipt. Omit the local-worker
+flags when the worker should run on another machine; remote workers should
+submit explicit task contracts because their filesystem roots are not visible
+to the MCP façade.
+
+To route durable tasks into an existing Claude MCP server, use the explicit
+`claude-mcp` worker backend. Configure the endpoint and the path as seen by the
+remote MCP server:
+
+~~~powershell
+$env:AR_CLAUDE_MCP_URL = "https://pc-b.example.test:8000/mcp"
+$env:AR_CLAUDE_MCP_WORKDIR = "."
+$env:AR_CLAUDE_MCP_AUTH_TOKEN = "<optional-token>"
+agent-relay worker --url http://127.0.0.1:8788 --token $env:AR_RELAY_AUTH_TOKEN `
+  --worker-id pc-a-claude-mcp --backend claude-mcp --repo C:\work\repo --claim-next
+~~~
+
+Plain HTTP to a non-loopback MCP endpoint is rejected by default. For a
+trusted private-LAN development service only, explicitly set
+`AR_CLAUDE_MCP_ALLOW_INSECURE_LAN=1`. The remote MCP server owns the process
+and filesystem; Agent Relay records its bounded output and transport identity,
+but does not claim local patch or verification authority for this backend.
+
+On the worker machine, point the reference worker at its local checkout:
+
+~~~powershell
+agent-relay worker --url http://127.0.0.1:8788 --token $env:AR_RELAY_AUTH_TOKEN `
+  --agent-token $env:AR_RELAY_AGENT_TOKEN `
+  --worker-id pc-b-claude --backend claude-task --repo C:\work\repo `
+  --claim-next
+~~~
+
+`--token` is the coordinator/admin credential; `--agent-token` is the scoped
+credential enrolled for that worker. Rotate or revoke a worker credential with
+the coordinator token:
+
+~~~powershell
+agent-relay agents --url http://127.0.0.1:8788 --token $env:AR_RELAY_AUTH_TOKEN `
+  --revoke pc-b-claude --json
+~~~
+
+`--claim-next` asks the coordinator for one highest-priority compatible task per poll.
+The coordinator evaluates the enrolled Agent Card and task workspace policy,
+skips incompatible or already leased work, and grants the lease atomically.
+Without this flag, the reference worker retains the backwards-compatible
+list-and-claim loop.
+
+For LAN use, set a bearer token on both server and client. Prefer HTTPS with a
+certificate issued by a private CA or trusted public CA:
+
+~~~powershell
+$env:AR_RELAY_CA_CERT = "C:\agent-relay\lan-ca.pem"
+agent-relay serve --host 0.0.0.0 --port 8788 --token $env:AR_RELAY_AUTH_TOKEN `
+  --tls-cert C:\agent-relay\server-chain.pem `
+  --tls-key C:\agent-relay\server-key.pem
+~~~
+
+Clients and workers use `https://...` URLs and verify the server certificate;
+`AR_RELAY_CA_CERT` adds a private CA without an insecure bypass. The current
+coordinator persists lifecycle state, leases, Agent Cards, and hash-checked
+patch artifacts. Workers acquire a lease and report transitions through the
+protocol endpoints; the reference worker loop provides the local-Qwen and
+Claude adapter implementations.
+
+Use `workspace_policy` to make routing explicit and enforceable. For example,
+`--workspace-policy-json '{"backend":"claude-task","required_capabilities":["claude-a2a"]}'`
+prevents a scoped local-Qwen worker from claiming the task; the coordinator
+checks the enrolled Agent Card before granting its lease.
+
+To use a Claude A2A daemon that is already running on another machine, set
+the remote endpoint on the process that executes the `claude-task` lane:
+
+~~~powershell
+$env:AR_CLAUDE_A2A_SERVER_URL = "https://pc-b.example.test:8787"
+$env:AR_CLAUDE_A2A_AUTH_TOKEN = "<claude-daemon-token>"
+$env:AR_CLAUDE_A2A_CA_CERT = "C:\agent-relay\lan-ca.pem" # private CA only
+$env:AR_CLAUDE_A2A_WORKSPACE_PATH = "."
+agent-relay delegate --backend claude-task --task .\task.json --repo . --json
+~~~
+
+With these settings Agent Relay submits the bounded task to the existing
+daemon's durable `/a2a/jobs` API, polls the same job, propagates cancellation,
+and returns the daemon's bounded patch and receipt. Without the remote URL, the
+worker starts the vendored ephemeral bridge locally. Non-loopback Claude A2A
+servers require an auth token and TLS; use a loopback listener or a secure
+tunnel for development-only HTTP.
+
+Cancellation is deliberately evidence-bound. Claude tasks use the bridge's
+durable async job cancellation endpoint; adapters that cannot prove a stopped
+execution return an explicit `blocked` receipt with
+`execution_stopped: false`, never a false `succeeded` result.
+
+Transient Claude bridge transport failures are also evidence-bound: when the
+adapter can prove the caller worktree remains untouched and the failure is a
+retryable liveness/connection boundary, the worker records the failure, returns
+the task to `waiting`, releases its lease, and consumes the task's bounded
+`retry_limit`. It does not turn a recoverable adapter outage into a false
+terminal failure or retry indefinitely.
+
+Filter the machine-readable Agent Card registry by task kind, capability, or
+truthful readiness:
+
+~~~powershell
+agent-relay agents --url http://127.0.0.1:8788 --task-kind mechanical `
+  --capability claude-a2a --readiness ready --json
+~~~
+
+The coordinator also exposes a bounded Server-Sent Events replay stream for
+clients that need push-style updates. Reconnect with the last numeric `id` as
+the `after` value; the JSON `/events?after=N` endpoint remains the canonical
+missed-event replay path:
+
+~~~powershell
+curl.exe -H "Authorization: Bearer $env:AR_RELAY_AUTH_TOKEN" `
+  "http://127.0.0.1:8788/tasks/task-001/events/stream?after=0&timeout=30"
+~~~
+
+agent-relay reprice is an estimate of frontier response/handoff accounting. It is not
 the same as the measured frontier Codex telemetry in the result above. Do not
 use compact packet-size savings as a substitute for a complete
 triage/review/repair ledger.
@@ -340,8 +635,21 @@ triage/review/repair ledger.
 For deterministic orchestration checks without a model:
 
 ~~~powershell
-lcd eval --backend fixture --suite bounded-50 --aggregate --sample 5 --json
+agent-relay eval --backend fixture --suite bounded-50 --aggregate --sample 5 --json
 ~~~
+
+Run the authenticated control-plane acceptance harness. It launches the
+coordinator as a separate local process and exercises the protocol over real
+HTTP, including idempotency, expired-lease reassignment, stale-worker
+rejection, artifact/receipt persistence, coordinator restart, SSE reconnect,
+and credential revocation:
+
+~~~powershell
+py -3 scripts\acceptance_control_plane.py
+~~~
+
+This is a loopback protocol/fault-injection harness; the physical two-PC LAN
+scenario remains a separate release gate.
 
 The fixture backend proves task, sandbox, scope, retry, and reporting logic.
 It is not evidence that Qwen can solve the tasks or that Codex tokens were
@@ -352,8 +660,9 @@ saved.
 This repository includes project-scoped custom agents under `.codex/agents/`.
 `sol_high` is the implementation subagent: it uses the exact model slug
 `gpt-5.6-sol` with `model_reasoning_effort = "high"` and may write only within
-the parent task's normal workspace permissions. `reviewer` uses the same
-high-reasoning Sol model but is read-only. Its output is intentionally concise,
+the parent task's normal workspace permissions. `reviewer` uses `gpt-5.6-luna`
+with the same high-reasoning settings and is read-only. Its output is
+intentionally concise,
 while its instructions require an independent diff review and focused
 verification so it can catch issues a faster `gpt-5.6-luna` implementation may
 miss.
@@ -400,6 +709,10 @@ guide and prompt kit are in
 [skills/agent-relay/references/qwen-worker.md](skills/agent-relay/references/qwen-worker.md)
 and [skills/agent-relay/references/qwen-prompts.md](skills/agent-relay/references/qwen-prompts.md).
 The packaged artifact is [agent-relay.skill](agent-relay.skill).
+
+The archive is generated from the skill source with
+`py -3 scripts/build_skill_package.py`; CI validates both the checked-in
+archive and the copy embedded in the Python wheel.
 
 The skill's job is to help frontier Codex decide when delegation is worth
 doing, form a bounded contract, invoke the Codex CLI/Qwen lane, and consume

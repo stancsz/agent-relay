@@ -17,8 +17,10 @@ import subprocess
 import time
 from typing import Any, Mapping
 
+from .env import load_dotenv
 
-DEFAULT_REVIEW_MODEL = "gpt-5.6-sol"
+
+DEFAULT_REVIEW_MODEL = "gpt-5.6-luna"
 DEFAULT_REASONING_EFFORT = "high"
 
 
@@ -38,31 +40,33 @@ class CodexReviewConfig:
         reasoning_effort: str | None = None,
         timeout_seconds: float | None = None,
     ) -> "CodexReviewConfig":
+        load_dotenv()
         resolved = (
             executable
-            or os.environ.get("SUBAGENT_CODEX_BIN")
-            or os.environ.get("LCD_CODEX_BIN")
+            or os.environ.get("AR_CODEX_BIN")
             or shutil.which("codex.cmd")
             or shutil.which("codex")
         )
         if not resolved:
             raise FileNotFoundError(
-                "Codex CLI was not found; install/login to Codex or set SUBAGENT_CODEX_BIN"
+                "Codex CLI was not found; install/login to Codex or set AR_CODEX_BIN"
             )
         raw_timeout = timeout_seconds
         if raw_timeout is None:
             try:
-                raw_timeout = float(os.environ.get("SUBAGENT_CODEX_REVIEW_TIMEOUT_SECONDS", "300"))
+                raw_timeout = float(
+                    os.environ.get("AR_CODEX_REVIEW_TIMEOUT_SECONDS", "300")
+                )
             except ValueError:
                 raw_timeout = 300.0
         if raw_timeout <= 0:
             raise ValueError("review timeout must be greater than zero")
         return cls(
             executable=resolved,
-            model=model or os.environ.get("SUBAGENT_CODEX_REVIEW_MODEL", DEFAULT_REVIEW_MODEL),
+            model=model or os.environ.get("AR_CODEX_REVIEW_MODEL", DEFAULT_REVIEW_MODEL),
             reasoning_effort=(
                 reasoning_effort
-                or os.environ.get("SUBAGENT_CODEX_REVIEW_REASONING_EFFORT", DEFAULT_REASONING_EFFORT)
+                or os.environ.get("AR_CODEX_REVIEW_REASONING_EFFORT", DEFAULT_REASONING_EFFORT)
             ),
             timeout_seconds=raw_timeout,
         )

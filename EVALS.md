@@ -1,8 +1,13 @@
 # Agent Relay Evaluation Plan
 
-This document preserves the historical `LCD_*` environment variables and
-`lcd` command names so recorded runs remain reproducible. The current product
+This document preserves the historical `AR_*` environment variables and
+`agent-relay` command names so recorded runs remain reproducible. The current product
 identity is Agent Relay.
+
+The historical names in this report and its embedded run records are preserved
+as provenance, not as current configuration. Live source, setup, and new
+evaluation commands use the `AR_*` environment-variable namespace and the
+`agent-relay` command.
 
 ## 1. Purpose
 
@@ -24,7 +29,7 @@ new cohort:
 ~~~powershell
 ollama pull qwen3.5:4b
 $env:LOCAL_MODEL = "qwen3.5:4b"
-$env:LCD_CODEX_MODEL = "qwen3.5:4b"
+$env:AR_CODEX_MODEL = "qwen3.5:4b"
 ~~~
 
 The repository's existing live records used **`qwen3:4b`**, not Qwen3.5-4B.
@@ -171,8 +176,8 @@ workflow change as complete, verify all of the following:
 
 - `skills/agent-relay/SKILL.md` passes the skill validator and packages
   successfully;
-- the skill routes through `lcd delegate --backend codex-ollama` or
-  `lcd batch`, rather than asking Qwen to bypass the outer verifier;
+- the skill routes through `agent-relay delegate --backend codex-ollama` or
+  `agent-relay batch`, rather than asking Qwen to bypass the outer verifier;
 - the parent prompt keeps architecture and acceptance ownership while the child
   prompt requires one bounded JSON result with no reasoning transcript;
 - task input is minimal and exact, with `allowed_files`, verification, and
@@ -213,15 +218,15 @@ Codex CLI **0.87.0** compatibility lane. The model is Qwen3.5 4.7B Q4_K_M;
 the digest, not the friendly tag alone, identifies the tested artifact.
 
 The exact-model direct smoke and Codex CLI smoke both passed. The Codex smoke
-used `ollama-chat`, the temporary `lcd-ollama` provider, low reasoning,
-`LCD_CODEX_NUM_CTX=8192`, compact prompts, stripped tools, disabled reasoning,
-`LCD_CODEX_OUTPUT_SCHEMA=false`, and no model pull. An opt-in
-`LCD_CODEX_OUTPUT_SCHEMA=true` probe failed immediately with no proxy request
+used `ollama-chat`, the temporary `ar-ollama` provider, low reasoning,
+`AR_CODEX_NUM_CTX=8192`, compact prompts, stripped tools, disabled reasoning,
+`AR_CODEX_OUTPUT_SCHEMA=false`, and no model pull. An opt-in
+`AR_CODEX_OUTPUT_SCHEMA=true` probe failed immediately with no proxy request
 and an empty final-message error, so schema mode remains disabled on this
 runtime rather than being counted as a quality result.
 
 The fresh `bounded-basic` artifact
-(`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-bounded-basic-final-20260817`)
+(`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-bounded-basic-final-20260817`)
 completed 10 eligible and 1 expected-blocked case:
 
 ~~~text
@@ -234,7 +239,7 @@ MVP gate:                  FAIL (targeted smoke, no matched economics)
 ~~~
 
 The stronger 50-task artifact
-(`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-bounded-50-final4-20260817`)
+(`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-bounded-50-final4-20260817`)
 completed all 50 cases: 45 eligible and 5 expected-blocked. It is the current
 quality result, and it failed the MVP gate:
 
@@ -280,7 +285,7 @@ on the first/bounded attempt (80%), with one genuine verification failure:
 Qwen returned a top-level `if value < 0` fragment instead of preserving the
 function definition, and the bounded retry reproduced the invalid patch. The
 artifact is
-`C:\Users\stanc\AppData\Local\Temp\lcd-current-bounded-basic-20260817`.
+`C:\Users\stanc\AppData\Local\Temp\ar-current-bounded-basic-20260817`.
 
 That run is diagnostic rather than a final scope-quality cohort: repository
 source edits were made concurrently while it was running, so the evaluator
@@ -290,7 +295,7 @@ for the same negative-timeout task completed first-attempt SUCCESS in 84.9
 seconds with `main_worktree_unchanged=true`, reported-file output, and no model
 pull. It configured Qwen 8B as the retry model, but no retry was needed. The
 artifact is
-`C:\Users\stanc\AppData\Local\Temp\lcd-current-negative-timeout-retry8b-20260817`.
+`C:\Users\stanc\AppData\Local\Temp\ar-current-negative-timeout-retry8b-20260817`.
 
 The subsequent recovery hardening adds a Python shape guard: a source fence is
 not accepted as a complete replacement when it removes existing top-level
@@ -336,7 +341,7 @@ quality.
 
 The project must measure whether Codex delegates the right work, not only
 whether the local worker can complete work after being handed a task. The
-parent-facing `lcd triage` gate is the routing contract:
+parent-facing `agent-relay triage` gate is the routing contract:
 
 ~~~text
 DELEGATE iff every gate is true:
@@ -355,14 +360,14 @@ performance judgment, and ambiguous investigation stay in the parent Codex
 context. Missing task classification, write scope, or verification is
 `BLOCKED`; valid but risky or economically unpriced work is `KEEP_LOCAL`.
 
-Run it before `lcd delegate`:
+Run it before `agent-relay delegate`:
 
 ~~~powershell
-lcd triage --task .\task.json --avoided-tokens 1800 --spent-tokens 600
+agent-relay triage --task .\task.json --avoided-tokens 1800 --spent-tokens 600
 ~~~
 
 The recommended execution path adds `--require-triage` plus the same token
-estimates to `lcd delegate`; this makes the routing decision fail closed at the
+estimates to `agent-relay delegate`; this makes the routing decision fail closed at the
 CLI boundary instead of relying only on prompt compliance. Existing benchmark
 commands remain available without the flag so historical cohorts are not
 silently changed.
@@ -603,19 +608,19 @@ The following is the planned comparison command surface; do not treat it as
 evidence that an adapter is implemented until its capability smoke passes:
 
 ~~~powershell
-lcd doctor --claude-smoke --model qwen3.5:4b
-lcd doctor --codex-smoke --model qwen3.5:4b
-lcd doctor --deepseek-smoke --model qwen3.5:4b
+agent-relay doctor --claude-smoke --model qwen3.5:4b
+agent-relay doctor --codex-smoke --model qwen3.5:4b
+agent-relay doctor --deepseek-smoke --model qwen3.5:4b
 ~~~
 
 Run the same cohort separately for each available lane:
 
 ~~~powershell
-lcd eval --backend claude-ollama --model qwen3.5:4b --suite bounded-50 `
+agent-relay eval --backend claude-ollama --model qwen3.5:4b --suite bounded-50 `
   --economics .\economics-claude.json --checkpoint .\claude.checkpoint.json
-lcd eval --backend codex-ollama --model qwen3.5:4b --suite bounded-50 `
+agent-relay eval --backend codex-ollama --model qwen3.5:4b --suite bounded-50 `
   --economics .\economics-codex.json --checkpoint .\codex.checkpoint.json
-lcd eval --backend deepseek-ollama --model qwen3.5:4b --suite bounded-50 `
+agent-relay eval --backend deepseek-ollama --model qwen3.5:4b --suite bounded-50 `
   --economics .\economics-deepseek.json --checkpoint .\deepseek.checkpoint.json
 ~~~
 
@@ -683,10 +688,10 @@ delegation.
 The checked-in resumable probe is:
 
 ~~~powershell
-lcd baseline --suite bounded-basic --model gpt-5.6-luna `
+agent-relay baseline --suite bounded-basic --model gpt-5.6-luna `
   --codex-bin C:\path\to\app-managed\codex.exe `
-  --artifact-dir $env:TEMP\lcd-codex-baseline `
-  --checkpoint $env:TEMP\lcd-codex-baseline\checkpoint.json
+  --artifact-dir $env:TEMP\ar-codex-baseline `
+  --checkpoint $env:TEMP\ar-codex-baseline\checkpoint.json
 ~~~
 
 The baseline runner uses Codex CLI JSONL usage events, an isolated disposable
@@ -748,7 +753,7 @@ signal appears, rather than waiting for a potentially multi-gigabyte pull to
 finish. Preinstall/warm the exact tag at the configured Ollama host before
 comparing models.
 
-The Codex worker also has a no-progress watchdog (`LCD_CODEX_IDLE_TIMEOUT_SECONDS`,
+The Codex worker also has a no-progress watchdog (`AR_CODEX_IDLE_TIMEOUT_SECONDS`,
 default 90 seconds). A process that emits only initial thread events and then makes
 no stdout/stderr progress is recorded as a timeout and excluded from model-quality
 claims. This protects the wall-clock gate from repeatedly waiting for a stalled
@@ -786,7 +791,7 @@ Batching is an orchestration boundary, not a relaxation of correctness:
 
 - every task keeps its own sandbox, allowed-file scope, verification, and
   main-worktree attestation;
-- `lcd batch --require-triage` runs the parent safety/economics gate for every
+- `agent-relay batch --require-triage` runs the parent safety/economics gate for every
   manifest entry before constructing or invoking its worker;
 - `KEEP_LOCAL` and `BLOCKED` entries are never sent to the local model; they are
   only expected passes when the manifest explicitly declares the matching
@@ -829,12 +834,12 @@ triage decision, decomposition, handoff, review, retry allowance, and recovery.
 An entry rejected by triage must not enter the delegated-task denominator unless
 the benchmark explicitly treats that refusal as its expected outcome.
 
-`lcd eval --compact` applies the same artifact/proof-packet policy to a
+`agent-relay eval --compact` applies the same artifact/proof-packet policy to a
 predeclared suite. Its `frontier_handoff_tokens_estimate` is valid evidence for
 the response-size component of an estimate, but a complete KPI still needs the
 Codex task-selection/decomposition cost and any artifact reviews.
 
-`lcd eval --aggregate` is the more aggressive proof-first mode. It returns
+`agent-relay eval --aggregate` is the more aggressive proof-first mode. It returns
 aggregate metrics, a case status index, and failures while retaining full
 per-task records and patches in the evidence artifact. It may be used to
 measure the high-leverage execution path only when the run records an explicit
@@ -908,7 +913,7 @@ nonzero exit because the 11-case smoke cannot satisfy the 50-task MVP gate.
 
 An opt-in `--output-schema` probe then produced an immediate empty-final-message
 failure on this Codex/Ollama runtime. Native schema enforcement is therefore
-available only behind `LCD_CODEX_OUTPUT_SCHEMA=true`; the stable default keeps
+available only behind `AR_CODEX_OUTPUT_SCHEMA=true`; the stable default keeps
 it disabled until a provider-compatible structured-output comparison passes.
 
 A fresh sequential 50-task `codex-ollama` cohort was then run with Qwen 3 4B,
@@ -929,18 +934,18 @@ MVP gate:                         FAIL
 ~~~
 
 The run used the checkpointed command below and retained its full evidence at
-`C:\Users\stanc\AppData\Local\Temp\lcd-codex-cli-qwen3-4b-bounded-50-20260816`:
+`C:\Users\stanc\AppData\Local\Temp\ar-codex-cli-qwen3-4b-bounded-50-20260816`:
 
 ~~~powershell
 $env:PYTHONPATH = "src"
-$env:LCD_CODEX_OLLAMA_HOST = "http://127.0.0.1:11435"
-$env:LCD_CODEX_MODEL = "qwen3:4b"
-$env:LCD_CODEX_REASONING_EFFORT = "low"
-$env:LCD_CODEX_TIMEOUT_SECONDS = "90"
-$artifactDir = Join-Path $env:TEMP "lcd-codex-cli-qwen3-4b-bounded-50-20260816"
+$env:AR_CODEX_OLLAMA_HOST = "http://127.0.0.1:11435"
+$env:AR_CODEX_MODEL = "qwen3:4b"
+$env:AR_CODEX_REASONING_EFFORT = "low"
+$env:AR_CODEX_TIMEOUT_SECONDS = "90"
+$artifactDir = Join-Path $env:TEMP "ar-codex-cli-qwen3-4b-bounded-50-20260816"
 $outputPath = Join-Path $artifactDir "run.json"
 $checkpointPath = Join-Path $artifactDir "checkpoint.json"
-lcd eval --backend codex-ollama --model qwen3:4b --suite bounded-50 `
+agent-relay eval --backend codex-ollama --model qwen3:4b --suite bounded-50 `
   --aggregate --sample 5 --manifest-mode thin `
   --artifact-dir $artifactDir --output $outputPath --checkpoint $checkpointPath
 ~~~
@@ -970,7 +975,7 @@ accepted 3/7, so the stronger retry model did not produce an aggregate
 reliability improvement on this small hard-case sample. Scope review remained
 incomplete, although no observed out-of-scope edits reached the main
 worktree. The evidence is retained at
-`C:\Users\stanc\AppData\Local\Temp\lcd-codex-qwen3-4b-retry8b-targeted.json`.
+`C:\Users\stanc\AppData\Local\Temp\ar-codex-qwen3-4b-retry8b-targeted.json`.
 
 For this targeted run, the proof ledger measured 5,203 full-report tokens,
 1,450 compact-handoff tokens, and 176 selected-review artifact tokens, for
@@ -998,7 +1003,7 @@ MVP gate:                        NOT APPLICABLE (targeted suite, not 50 tasks)
 ~~~
 
 The checkpointed evidence is retained at
-`C:\Users\stanc\AppData\Local\Temp\lcd-codex-cli-qwen3-4b-bounded-recovery-20260816-current-7`.
+`C:\Users\stanc\AppData\Local\Temp\ar-codex-cli-qwen3-4b-bounded-recovery-20260816-current-7`.
 The three accepted results exercised `reported_patch`,
 `reported_code_block`, and `reported_files` recovery sources. The proof packet
 measured 4,252 full-report tokens, 1,076 compact-handoff tokens, and 226
@@ -1010,7 +1015,7 @@ does not establish net Codex-token savings.
 
 A repeat made before the final reported-patch boundary recovery passed 2/3;
 that run is retained at
-`C:\Users\stanc\AppData\Local\Temp\lcd-codex-cli-qwen3-4b-bounded-recovery-20260816-current-6`.
+`C:\Users\stanc\AppData\Local\Temp\ar-codex-cli-qwen3-4b-bounded-recovery-20260816-current-6`.
 The current `current-7` result is the post-fix measurement.
 
 On 2026-08-17, after the bounded malformed-`index` transport repair, a fresh
@@ -1039,7 +1044,7 @@ gates remain unproven.
 On 2026-08-18, the new capability probe was run against the same live host:
 
 ~~~powershell
-lcd doctor --host http://127.0.0.1:11435 --model qwen3:4b --codex-smoke --json
+agent-relay doctor --host http://127.0.0.1:11435 --model qwen3:4b --codex-smoke --json
 ~~~
 
 The direct Ollama tags check succeeded and the exact `qwen3:4b` tag was
@@ -1073,7 +1078,7 @@ the 50-task comparison.
 The stored matched 50-task Qwen 4B economics record can be repriced with:
 
 ~~~powershell
-lcd reprice `
+agent-relay reprice `
   --run-report .\evals\results\qwen3-4b-seed17-bounded-50-v9-final.json `
   --economics .\evals\results\qwen3-4b-seed17-bounded-50-v8-economics.json `
   --manifest-mode thin `
@@ -1266,14 +1271,14 @@ and seconds are included in the delegated total. Delegated wall-clock time
 includes the local run plus the supplied triage/delegation/review/repair/recovery time;
 it must not omit review work. Missing economics or repair/scope-review
 classification are reported as `NOT_AVAILABLE` or `INCOMPLETE`; they are never
-replaced with a guessed pass. `lcd eval` exits zero only when the complete
+replaced with a guessed pass. `agent-relay eval` exits zero only when the complete
 `mvp_gate` is `PASS`; case-level success with unevaluated economics is still a
 non-passing benchmark result.
 
 For an already recorded full run, the executable repricing path is:
 
 ~~~powershell
-lcd reprice `
+agent-relay reprice `
   --run-report .\evals\results\run.json `
   --economics .\evals\results\economics.json `
   --manifest-mode thin `
@@ -1298,17 +1303,17 @@ they were. Legacy records without this history remain explicitly estimated.
 ## 14. Authoritative fixed-lane Qwen3.5:4B cohort (2026-08-17)
 
 The authoritative current cohort is the clean run at
-`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-bounded-50-deterministic2-20260817`.
+`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-bounded-50-deterministic2-20260817`.
 It used Codex CLI `0.87.0`, Ollama `0.32.13` at
 `http://localhost:11434`, and the installed exact model tag `qwen3.5:4b`
 with digest
 `2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd`.
-The Codex compatibility lane used `ollama-chat`, provider `lcd-ollama`,
-`LCD_CODEX_NUM_CTX=8192`, disabled reasoning, stripped tools, compact prompts,
-`LCD_CODEX_OUTPUT_SCHEMA=false`, same-model retry, `LCD_CODEX_TEMPERATURE=0`,
-and `LCD_CODEX_SEED=17`. No implicit model pull occurred.
+The Codex compatibility lane used `ollama-chat`, provider `ar-ollama`,
+`AR_CODEX_NUM_CTX=8192`, disabled reasoning, stripped tools, compact prompts,
+`AR_CODEX_OUTPUT_SCHEMA=false`, same-model retry, `AR_CODEX_TEMPERATURE=0`,
+and `AR_CODEX_SEED=17`. No implicit model pull occurred.
 
-Immediately before the cohort, `lcd doctor --codex-smoke --model qwen3.5:4b
+Immediately before the cohort, `agent-relay doctor --codex-smoke --model qwen3.5:4b
 --json` returned `ok: true` in one attempt (14.8 seconds), with the same host,
 model, provider, context bound, temperature, seed, and no-pull policy. The
 probe is lane-health evidence only; the cohort below is the quality evidence.
@@ -1343,9 +1348,9 @@ and 85% verification thresholds, but it is not an MVP pass because the run has
 no complete task-aware scope attestation and no matched Codex-only baseline.
 
 The full compact report is
-`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-bounded-50-deterministic2-20260817\run.json`;
+`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-bounded-50-deterministic2-20260817\run.json`;
 the retained full per-case evidence is
-`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-bounded-50-deterministic2-20260817\full-records.json`.
+`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-bounded-50-deterministic2-20260817\full-records.json`.
 Its proof packet estimate was 51,911 full-report tokens versus 3,147 compact
 handoff tokens, or 93.94% response-packet compaction (3,698 tokens including
 the selected review artifacts). This is a same-run response-size estimate, not
@@ -1372,7 +1377,7 @@ moved to end-of-file. Recovery now runs only when the original diff is not
 applicable. The deterministic control was rerun after the fix:
 
 ~~~text
-artifact:                  C:\Users\stanc\AppData\Local\Temp\lcd-fixture-bounded-50-scope-review-v4-20260817.json
+artifact:                  C:\Users\stanc\AppData\Local\Temp\ar-fixture-bounded-50-scope-review-v4-20260817.json
 eligible acceptance:       45/45 = 100%
 verification:              45/45 = 100%
 expected BLOCKED correct:   5/5 = 100%
@@ -1393,7 +1398,7 @@ A separate direct Codex-only baseline probe was run with Codex CLI
 ephemeral `CODEX_HOME` containing only the authenticated session, ignored user
 configuration, and explicit `danger-full-access` inside the disposable
 fixture sandbox. Artifact:
-`C:\Users\stanc\AppData\Local\Temp\lcd-codex-baseline-minimal-final-d00b26d419294eb298753f74400ad4aa`.
+`C:\Users\stanc\AppData\Local\Temp\ar-codex-baseline-minimal-final-d00b26d419294eb298753f74400ad4aa`.
 It completed the first `negative-timeout` task in one attempt: 1/1 accepted,
 1/1 independently verified, 0 path violations, 38.26 seconds end to end, and
 provider-reported usage of 137,130 input plus 941 output tokens (138,071
@@ -1415,17 +1420,17 @@ The first current-CLI probe reached Ollama but passed Responses requests through
 unchanged. Ollama then spent 61.26 seconds and 255,899 Codex input tokens across
 two attempts while Qwen repeatedly tried malformed shell edits. That diagnostic
 is retained at
-`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-codex0147-smoke-20260817\doctor.json`;
+`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-codex0147-smoke-20260817\doctor.json`;
 it is not cohort quality evidence.
 
 The proxy now applies the Responses-native equivalent of the bounded Chat lane:
 `reasoning: {effort: "none"}`, tool-schema removal, the compact no-tools
 contract, `max_output_tokens`, and deterministic sampling controls. The fresh
 smoke artifact is
-`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-codex0147-smoke-rewrite-20260817\doctor.json`.
+`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-codex0147-smoke-rewrite-20260817\doctor.json`.
 It used the installed exact Qwen3.5:4B digest
 `2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd`, Ollama
-`0.32.13`, `LCD_CODEX_NUM_CTX=8192`, `LCD_CODEX_NUM_PREDICT=2048`, temperature
+`0.32.13`, `AR_CODEX_NUM_CTX=8192`, `AR_CODEX_NUM_PREDICT=2048`, temperature
 `0`, seed `17`, no model pull, and the disposable inner `danger-full-access`
 worktree. It completed one attempt with a verified `reported_files` result:
 
@@ -1458,7 +1463,7 @@ Ollama:             0.32.13 at http://localhost:11434
 model digest:       2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd
 Codex CLI:          0.147.0-alpha.1.2
 wire API:           Responses
-provider ID:        lcd-ollama
+provider ID:        ar-ollama
 context/predict:    8192 / 2048
 temperature/seed:   0 / 17
 reasoning/tools:    disabled / stripped
@@ -1468,9 +1473,9 @@ cohort identity:    working-tree:2a506d62a54e02bedc48ffc3cbbe9183295814f16afe227
 ~~~
 
 The authoritative delegated run is retained at
-`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-bounded-50-codex0147-rewrite-v8-20260817\run.json`,
+`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-bounded-50-codex0147-rewrite-v8-20260817\run.json`,
 with full per-attempt records at
-`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-bounded-50-codex0147-rewrite-v8-20260817\artifacts\full-records.json`:
+`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-bounded-50-codex0147-rewrite-v8-20260817\artifacts\full-records.json`:
 
 ~~~text
 eligible tasks:                 45
@@ -1489,7 +1494,7 @@ MVP gate:                       NOT_EVALUATED (parent economics unpriced)
 The direct Codex-only baseline uses the same suite, fixture digest, repository
 identity, current app-managed Codex binary, and `gpt-5.6-luna`. Its report is
 retained at
-`C:\Users\stanc\AppData\Local\Temp\lcd-codex-baseline-bounded-50-codex0147-v2-20260817\run.json`.
+`C:\Users\stanc\AppData\Local\Temp\ar-codex-baseline-bounded-50-codex0147-v2-20260817\run.json`.
 It captured real `turn.completed` usage events:
 
 ~~~text
@@ -1513,7 +1518,7 @@ perfect quality oracle.
 The matched economics ledger is
 `evals/results/qwen35-4b-codex0147-bounded-50-v8-economics-estimate.json`, and
 the report-only evaluation is
-`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-bounded-50-codex0147-rewrite-v8-20260817\run-with-economics-v2.json`.
+`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-bounded-50-codex0147-rewrite-v8-20260817\run-with-economics-v2.json`.
 It is deliberately marked `source: estimate`:
 
 ~~~text
@@ -1548,14 +1553,14 @@ all 45 delegated candidates, and one real Codex CLI process repaired the one
 candidate rejected by review (`exact-logging`). Every process emitted
 `turn.completed` usage telemetry. Triage and review ran read-only; the repair
 ran in a disposable fixture worktree. The supervisor evidence is retained at
-`C:\Users\stanc\AppData\Local\Temp\lcd-frontier-supervisor-bounded-50-codex0147-20260817\supervisor.json`,
+`C:\Users\stanc\AppData\Local\Temp\ar-frontier-supervisor-bounded-50-codex0147-20260817\supervisor.json`,
 with the repair evidence at
-`C:\Users\stanc\AppData\Local\Temp\lcd-frontier-supervisor-bounded-50-codex0147-20260817\repair-exact-logging.json`.
+`C:\Users\stanc\AppData\Local\Temp\ar-frontier-supervisor-bounded-50-codex0147-20260817\repair-exact-logging.json`.
 
 The measured economics ledger is
 `evals/results/qwen35-4b-codex0147-bounded-50-v8-economics-measured.json` and
 the passing report is
-`C:\Users\stanc\AppData\Local\Temp\lcd-qwen35-bounded-50-codex0147-rewrite-v8-20260817\run-with-economics-measured-v3.json`:
+`C:\Users\stanc\AppData\Local\Temp\ar-qwen35-bounded-50-codex0147-rewrite-v8-20260817\run-with-economics-measured-v3.json`:
 
 ~~~text
 Codex-only baseline:             5,058,819 tokens / 1,439.11 seconds
@@ -1606,7 +1611,7 @@ Recommended summary:
 Also publish per-model results. Do not combine models in a way that hides a
 weak model or cherry-picks only successful task categories.
 
-`lcd eval` keeps the case-level `status` separate from `mvp_gate`. The initial
+`agent-relay eval` keeps the case-level `status` separate from `mvp_gate`. The initial
 10-case `bounded-basic` suite can pass its orchestration/correctness checks,
 but `mvp_gate` remains `NOT_EVALUATED` or `FAIL` until the 50-task cohort and
 matched economics records exist.
@@ -1682,7 +1687,7 @@ The north-star remains:
 
 ## 13. Historical Codex/Qwen3:4B compatibility-lane evidence
 
-The latest live validation uses the custom `lcd-ollama` provider in Codex CLI
+The latest live validation uses the custom `ar-ollama` provider in Codex CLI
 0.87.0, Ollama 0.12.11 at `http://127.0.0.1:11435`, Qwen 3 4B, the temporary
 loopback compatibility proxy, and the default one-retry contract. The proxy
 strips unused Chat tool schemas and compacts the provider system message before
@@ -1695,7 +1700,7 @@ The capability probe now exercises one bounded retry because a small model can
 return a correct summary without a candidate on its first text-only turn:
 
 ~~~powershell
-lcd doctor --host http://127.0.0.1:11435 --model qwen3:4b --codex-smoke --json
+agent-relay doctor --host http://127.0.0.1:11435 --model qwen3:4b --codex-smoke --json
 ~~~
 
 Latest result: `SUCCESS`, 2 attempts, verified `value.py`,
@@ -1727,3 +1732,4 @@ reliable after one retry but slow (roughly 143–186 seconds per case in this
 three-case run) and did not exercise Codex tool edits. The next measured work
 is to compare this lane against direct Ollama and a tool-capable lane on the
 same matched cohort, then price review and retry costs with Codex telemetry.
+

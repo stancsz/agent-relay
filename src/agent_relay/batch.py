@@ -169,7 +169,7 @@ def run_batch(
     artifact_root = (
         Path(artifact_dir).resolve()
         if artifact_dir is not None
-        else Path(tempfile.mkdtemp(prefix="lcd-batch-artifacts-"))
+        else Path(tempfile.mkdtemp(prefix="ar-batch-artifacts-"))
     )
     artifact_root.mkdir(parents=True, exist_ok=True)
 

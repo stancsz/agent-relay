@@ -15,6 +15,7 @@ import json
 import os
 import shutil
 import subprocess
+import ssl
 import sys
 import tempfile
 import threading
@@ -26,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from a2a_protocol import MAX_PACKET_BYTES, MAX_TEXT_CHARS, ProtocolError, digest_without_context_digest, validate_task, validate_result
+from a2a_protocol import MAX_PACKET_BYTES, MAX_PATCH_CHARS, MAX_TEXT_CHARS, ProtocolError, digest_without_context_digest, validate_task, validate_result
 from bridge_state import ProfileStore, StateError, atomic_write, utc_epoch
 
 
@@ -104,6 +105,25 @@ def git_snapshot(root: Path, extra_paths: list[str] | None = None) -> dict[str, 
     }
 
 
+def git_patch(root: Path, target_paths: list[str]) -> str:
+    """Return a bounded patch for remote artifact transfer."""
+
+    try:
+        completed = subprocess.run(
+            ["git", "diff", "--binary", "--", *target_paths],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return completed.stdout[:MAX_PATCH_CHARS]
+
+
 def resolve_workspace(server_root: Path, relative_path: str) -> Path:
     candidate = (server_root / (relative_path or ".")).resolve()
     try:
@@ -169,6 +189,12 @@ def render_prompt(task: dict[str, Any], profile_context: dict[str, Any] | None =
         "## Acceptance criteria",
         *[f"- {criterion}" for criterion in task["acceptance_criteria"]],
         "",
+        "## Declared verification",
+        *(
+            [f"- {command}" for command in task.get("verification", [])]
+            or ["- None supplied; the parent verifier owns the final check."]
+        ),
+        "",
         "## Constraints",
         *[f"- {constraint}" for constraint in task["constraints"]],
         *profile_lines,
@@ -177,10 +203,43 @@ def render_prompt(task: dict[str, Any], profile_context: dict[str, Any] | None =
     ])
 
 
+def build_cli_delegate_command(
+    *,
+    delegate: Path,
+    workspace: Path,
+    prompt_path: Path,
+    result_path: Path,
+    allowed_tools: str,
+    target_paths: list[str],
+    expected_change: bool | None,
+    timeout_seconds: int | None,
+) -> list[str]:
+    """Build a PowerShell fallback command without positional path leakage."""
+
+    command = [
+        "powershell.exe", "-NoProfile", "-File", str(delegate),
+        "-WorkingDirectory", str(workspace),
+        "-PromptFile", str(prompt_path),
+        "-Transport", "Cli",
+        "-AllowedTools", allowed_tools,
+        "-ResultPath", str(result_path),
+    ]
+    for target_path in target_paths:
+        command.extend(["-TargetPath", target_path])
+    if expected_change is True:
+        command.append("-ExpectChange")
+    elif expected_change is False:
+        command.append("-ExpectNoChange")
+    if timeout_seconds is not None:
+        command.extend(["-TimeoutSeconds", str(timeout_seconds)])
+    return command
+
+
 class A2AState:
     def __init__(self, args: argparse.Namespace) -> None:
         self.server_root = Path(args.workspace_root).resolve()
         self.auth_token = args.auth_token or os.environ.get("CLAUDE_A2A_AUTH_TOKEN")
+        self.tls_enabled = False
         self.worker_agent_type = args.worker_agent_type
         self.verifier_agent_type = args.verifier_agent_type
         self.agents_json = getattr(args, "agents_json", None) or os.environ.get("CLAUDE_A2A_AGENTS_JSON")
@@ -356,11 +415,18 @@ class A2AState:
         resolve_workspace(self.server_root, task["workspace"]["path"])
         job_id = safe_job_id(task)
         with self.lock:
+            previous_digest = self.seen.get(task["task_id"])
+            if previous_digest is not None and previous_digest != task["context_digest"]:
+                raise ProtocolError("task_id was already used with a different context digest")
             existing = self.jobs.get(job_id)
             if existing:
                 if existing.get("context_digest") != task["context_digest"]:
                     raise ProtocolError("job_id was already used with a different context digest")
                 return self._job_summary(existing)
+            if previous_digest == task["context_digest"]:
+                raise ProtocolError(
+                    "task_id was already used by a completed or synchronous task; use a new task_id"
+                )
             record = {
                 "protocol": task["protocol"],
                 "job_id": job_id,
@@ -644,6 +710,7 @@ class A2AState:
             "status": status,
             "output": output,
             "changed_paths": new_paths,
+            "patch": git_patch(workspace, target_paths),
             "evidence": evidence,
             "context_digest": task["context_digest"],
             "server_receipt": {
@@ -689,22 +756,16 @@ class A2AState:
         result_path = temp_root / "receipt.json"
         prompt_path.write_text(prompt, encoding="utf-8")
         delegate = self.client_script.with_name("claude_delegate.ps1")
-        command = [
-            "powershell.exe", "-NoProfile", "-File", str(delegate),
-            "-WorkingDirectory", str(workspace),
-            "-PromptFile", str(prompt_path),
-            "-Transport", "Cli",
-            "-AllowedTools", allowed_tools,
-            "-ResultPath", str(result_path),
-        ]
-        if target_paths:
-            command.extend(["-TargetPath", *target_paths])
-        if expected_change is True:
-            command.append("-ExpectChange")
-        elif expected_change is False:
-            command.append("-ExpectNoChange")
-        if self.timeout_seconds is not None:
-            command.extend(["-TimeoutSeconds", str(self.timeout_seconds)])
+        command = build_cli_delegate_command(
+            delegate=delegate,
+            workspace=workspace,
+            prompt_path=prompt_path,
+            result_path=result_path,
+            allowed_tools=allowed_tools,
+            target_paths=target_paths,
+            expected_change=expected_change,
+            timeout_seconds=self.timeout_seconds,
+        )
 
         process = subprocess.Popen(
             command,
@@ -866,6 +927,7 @@ class A2AState:
             "status": status,
             "output": output[:MAX_TEXT_CHARS],
             "changed_paths": new_paths,
+            "patch": git_patch(workspace, target_paths),
             "evidence": evidence,
             "context_digest": task["context_digest"],
             "server_receipt": {
@@ -881,6 +943,29 @@ class A2AState:
                 "worktree_changed": worktree_changed,
                 "before_head": before["head"],
                 "after_head": after["head"],
+                # Keep the cross-process adapter decision auditable without
+                # forwarding arbitrary Claude stdout into the control-plane
+                # receipt. This is especially useful when a task changed the
+                # intended file but the adapter still rejected its receipt.
+                "role_receipts": [
+                    {
+                        "role": role,
+                        "accepted": bool(receipt.get("accepted")),
+                        "process_exit_code": receipt.get("process_exit_code"),
+                        "claude_subtype": receipt.get("claude_subtype"),
+                        "claude_is_error": receipt.get("claude_is_error"),
+                        "target_changed": receipt.get("target_changed"),
+                        "change_expectation_satisfied": receipt.get("change_expectation_satisfied"),
+                        "branch_or_head_changed": receipt.get("branch_or_head_changed"),
+                        "unexpected_worktree_change": receipt.get("unexpected_worktree_change"),
+                        "status_before": receipt.get("status_before"),
+                        "status_after": receipt.get("status_after"),
+                        "changed_paths_after": receipt.get("changed_paths_after"),
+                        "staged_paths_after": receipt.get("staged_paths_after"),
+                        "json_parse_error": receipt.get("json_parse_error"),
+                    }
+                    for role, receipt, _ in receipts
+                ],
             },
         }
         return validate_result(result)
@@ -986,6 +1071,7 @@ class A2AHandler(BaseHTTPRequestHandler):
             "server": "claude-a2a",
             "workspace_root": str(self.server.state.server_root),
             "lan_auth_required": bool(self.server.state.auth_token),
+            "tls": bool(self.server.state.tls_enabled),
             "roles": ["orchestrator", "worker", "verifier", "team"],
             "team_target": True,
             "native_agent_teams": "probe at /capabilities",
@@ -1086,6 +1172,8 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8787)
     parser.add_argument("--workspace-root", default=os.getcwd())
     parser.add_argument("--auth-token")
+    parser.add_argument("--tls-cert")
+    parser.add_argument("--tls-key")
     parser.add_argument("--worker-agent-type")
     parser.add_argument("--verifier-agent-type")
     parser.add_argument("--agents-json", default=os.environ.get("CLAUDE_A2A_AGENTS_JSON"))
@@ -1096,12 +1184,23 @@ def main() -> int:
     args = parser.parse_args()
     if args.timeout_seconds is not None and args.timeout_seconds <= 0:
         parser.error("--timeout-seconds must be greater than zero")
-    if args.host not in {"127.0.0.1", "localhost", "::1"} and not (args.auth_token or os.environ.get("CLAUDE_A2A_AUTH_TOKEN")):
+    if bool(args.tls_cert) != bool(args.tls_key):
+        parser.error("--tls-cert and --tls-key must be supplied together")
+    is_lan = args.host not in {"127.0.0.1", "localhost", "::1"}
+    if is_lan and not (args.auth_token or os.environ.get("CLAUDE_A2A_AUTH_TOKEN")):
         parser.error("LAN binding requires --auth-token or CLAUDE_A2A_AUTH_TOKEN")
+    if is_lan and not (args.tls_cert and args.tls_key):
+        parser.error("LAN binding requires --tls-cert and --tls-key; use a secure tunnel for plain HTTP")
     if not args.state_dir:
         args.state_dir = str(Path.home() / ".claude-team-bridge")
     state = A2AState(args)
     with A2AServer((args.host, args.port), state) as server:
+        if args.tls_cert and args.tls_key:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+            context.load_cert_chain(certfile=args.tls_cert, keyfile=args.tls_key)
+            server.socket = context.wrap_socket(server.socket, server_side=True)
+            state.tls_enabled = True
         print(json.dumps({"server": "claude-a2a", "protocol": "claude-a2a/0.1", "host": args.host, "port": args.port, "workspace_root": str(state.server_root)}, ensure_ascii=False), flush=True)
         try:
             server.serve_forever()

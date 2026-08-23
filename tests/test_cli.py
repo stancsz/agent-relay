@@ -34,6 +34,138 @@ def test_baseline_parser_exposes_explicit_codex_binary() -> None:
     assert args.max_cases == 1
 
 
+def test_delegate_parser_exposes_sandboxed_claude_lane() -> None:
+    args = cli._parser().parse_args(
+        ["delegate", "--backend", "claude-task", "--task", "task.json"]
+    )
+
+    assert args.backend == "claude-task"
+
+
+def test_control_plane_parser_exposes_durable_lifecycle_commands() -> None:
+    parser = cli._parser()
+
+    serve = parser.parse_args(["serve", "--port", "8799"])
+    submit = parser.parse_args([
+        "submit",
+        "--task",
+        "task.json",
+        "--idempotency-key",
+        "idem-1",
+        "--priority",
+        "5",
+        "--deadline-at",
+        "2027-08-23T00:00:00Z",
+    ])
+    watch = parser.parse_args(["watch", "task-1", "--once"])
+    cancel = parser.parse_args(["cancel", "task-1"])
+    resume = parser.parse_args(["resume", "task-1"])
+    agents = parser.parse_args(["agents", "--revoke", "worker-a"])
+    worker = parser.parse_args(["worker", "--agent-token", "scoped-secret", "--once"])
+    chain = parser.parse_args(
+        [
+            "chain-submit",
+            "--chain-id",
+            "chain-1",
+            "--step-id",
+            "review",
+            "--step-index",
+            "1",
+            "--task",
+            "task.json",
+            "--predecessor-task-id",
+            "build-task",
+            "--allow-predecessor-state",
+            "succeeded",
+            "--defer-until-ready",
+        ]
+    )
+    inspect_chain = parser.parse_args(["inspect-chain", "chain-1"])
+    watch_chain = parser.parse_args(["watch-chain", "chain-1", "--once"])
+
+    assert serve.command == "serve" and serve.port == 8799
+    assert submit.command == "submit" and submit.idempotency_key == "idem-1"
+    assert submit.priority == 5 and submit.deadline_at == "2027-08-23T00:00:00Z"
+    assert watch.command == "watch" and watch.once is True
+    assert cancel.command == "cancel"
+    assert resume.command == "resume"
+    assert agents.revoke == "worker-a"
+    assert worker.agent_token == "scoped-secret"
+    assert chain.command == "chain-submit" and chain.step_index == 1 and chain.defer_until_ready is True
+    assert inspect_chain.command == "inspect-chain" and inspect_chain.chain_id == "chain-1"
+    assert watch_chain.command == "watch-chain" and watch_chain.once is True
+
+
+def test_chain_terminal_detection_respects_pending_and_step_states() -> None:
+    completed = {
+        "pending_steps": [],
+        "steps": [{"envelope": {"state": "succeeded"}}],
+    }
+    waiting = {
+        "pending_steps": [{"status": "pending"}],
+        "steps": [{"envelope": {"state": "succeeded"}}],
+    }
+    assert cli._chain_terminal(completed) is True
+    assert cli._chain_terminal(waiting) is False
+
+
+def test_delegate_uses_claude_lane_adapter(monkeypatch, tmp_path: Path, capsys) -> None:
+    task_path = tmp_path / "task.json"
+    task_path.write_text(
+        json.dumps({
+            "task_id": "claude-cli",
+            "objective": "Change one value.",
+            "allowed_files": ["value.py"],
+        }),
+        encoding="utf-8",
+    )
+    expected = DelegationResult(
+        task_id="claude-cli",
+        status=ResultStatus.SUCCESS,
+        summary="Claude sandbox verified",
+    )
+    calls = []
+
+    def fake_run(task, repo):
+        calls.append((task, repo))
+        return expected
+
+    monkeypatch.setattr(cli, "run_claude_task", fake_run)
+    args = cli._parser().parse_args(
+        [
+            "delegate",
+            "--backend",
+            "claude-task",
+            "--task",
+            str(task_path),
+            "--repo",
+            str(tmp_path),
+            "--json",
+        ]
+    )
+
+    assert cli._delegate(args) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "SUCCESS"
+    assert calls[0][0].task_id == "claude-cli"
+
+
+def test_checked_lanes_exit_nonzero_for_unavailable_lane(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        cli,
+        "lane_health_manifest",
+        lambda *, probe: [
+            {"name": "local-qwen", "status": "ready"},
+            {"name": "claude-task", "status": "blocked"},
+        ],
+    )
+    args = Namespace(check=True)
+
+    assert cli._lanes(args) == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["exit_status_policy"].startswith("nonzero only")
+
+
 def _eval_args(tmp_path: Path) -> Namespace:
     return Namespace(
         backend="fixture",

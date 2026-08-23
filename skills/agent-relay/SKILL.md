@@ -5,14 +5,15 @@ description: "Route bounded work through heterogeneous agent harnesses for local
 
 # Agent Relay
 
-Agent Relay provides four deliberately different agent-harness lanes behind one
+Agent Relay provides five deliberately different agent-harness lanes behind one
 workflow and one vocabulary:
 
 | Lane | Role | Authority | Default model | Worktree policy |
 | --- | --- | --- | --- | --- |
 | `local-qwen` | mechanical worker | free local inference through Ollama and Codex CLI | `qwen3.5:4b` | disposable sandbox; parent reruns proof |
 | `claude-task` | primary implementation/team worker | authenticated Claude Code task bridge, optional Agent Teams | host policy | bounded receipt with Git/workspace gates |
-| `codex-review` | independent verifier | logged-in Codex CLI subscription | `gpt-5.6-sol`, high effort | read-only review; must not edit |
+| `claude-mcp` | remote convenience worker | existing Claude streamable-HTTP MCP server (JSON or SSE) | host policy | remote output/transport receipt; no local sandbox claim |
+| `codex-review` | independent verifier | logged-in Codex CLI subscription | `gpt-5.6-luna`, high effort | read-only review; must not edit |
 | `agy-antigravity` | Google-stack scout/planner | local Antigravity CLI session | `gemini-3.1-pro-high`, high effort | plan mode; parent owns edits and proof |
 
 ## Routing rules
@@ -24,13 +25,25 @@ candidate receipt, not proof.
 - Use `local-qwen` only for low-risk, finite, mechanically verifiable tasks.
 - Use `claude-task` for repository-aware implementation or parallel independent
   work; use Agent Teams only when direct teammate coordination earns its cost.
+- Use `claude-mcp` only when an existing remote MCP service is the intended
+  execution authority; it does not provide local patch or sandbox proof.
 - Use `codex-review` after implementation for an independent, read-only QA pass.
+- Use the configurable escalation policy at `plan`, `execute`, `review`,
+  `recovery`, and `release` gates. Let ordinary workers do bulk work; summon a
+  configured high planner/verifier only when the matched rule returns
+  `consult` or `require_review`.
 - Use `agy-antigravity` for Google-specific ecosystem questions, Firebase,
   Android, browser/UI, and Gemini/Google Cloud integration judgment. Treat it as
   a plan/research specialist, not a general patch worker.
 - Never ask a verifier to edit, fix, commit, push, merge, deploy, or approve its
   own changes.
 - Run the repository's own tests and inspect the complete diff after every lane.
+
+The escalation policy is operational rather than confidence-based. It records
+the matched rule, signals, selected profile/model, and evidence requirements.
+Malformed policy, unavailable required high-lane capability, missing evidence,
+or ambiguous safety signals fail closed; do not silently fall back to the bulk
+worker and call a required consultation complete.
 
 ## Commands
 
@@ -40,17 +53,211 @@ List the canonical registry:
 agent-relay lanes --json
 ```
 
+Check whether the configured lanes have usable prerequisites on this machine.
+Readiness is `ready`, `degraded`, `blocked`, or `unknown`: a live health probe
+can be `ready`, while an executable-only check remains `unknown` until
+invocation and entitlement are exercised:
+
+```powershell
+agent-relay lanes --check --json
+agent-relay doctor --all
+```
+
+Run the durable coordinator and use its idempotent task lifecycle:
+
+```powershell
+agent-relay serve --db .\relay.sqlite3 --port 8788
+agent-relay mcp --coordinator-url http://127.0.0.1:8788 --port 8789
+agent-relay submit --url http://127.0.0.1:8788 --task .\task.json --idempotency-key task-001 --json
+agent-relay watch task-001 --url http://127.0.0.1:8788
+agent-relay watch task-001 --url http://127.0.0.1:8788 --stream --json
+agent-relay inspect task-001 --url http://127.0.0.1:8788 --json
+agent-relay cancel task-001 --url http://127.0.0.1:8788 --json
+agent-relay resume task-001 --url http://127.0.0.1:8788 --json
+agent-relay chain-submit --chain-id feature-1 --step-id review --step-index 1 `
+  --task .\review-task.json --predecessor-task-id task-001 `
+  --parent-message "Review only the declared patch." --json
+agent-relay worker --url http://127.0.0.1:8788 --token $env:AR_RELAY_AUTH_TOKEN `
+  --agent-token $env:AR_RELAY_AGENT_TOKEN `
+  --worker-id pc-b-claude --backend claude-task --repo C:\work\repo `
+  --claim-next
+```
+
+The coordinator is loopback-only by default. For LAN use, set the same
+`AR_RELAY_AUTH_TOKEN` on the server and client. Prefer HTTPS for LAN use:
+
+```powershell
+$env:AR_RELAY_CA_CERT = "C:\agent-relay\lan-ca.pem"
+agent-relay serve --host 0.0.0.0 --port 8788 `
+  --token $env:AR_RELAY_AUTH_TOKEN `
+  --tls-cert C:\agent-relay\server-chain.pem `
+  --tls-key C:\agent-relay\server-key.pem
+```
+
+Use `https://...` coordinator URLs on clients and workers; `AR_RELAY_CA_CERT`
+adds a private CA while retaining certificate verification. Cancellation is deliberately
+two-phase: `cancel_requested` is not `cancelled` until the worker confirms that
+execution stopped. The current slice persists jobs, events, leases, and Agent
+Cards and hash-checked patch artifacts. The reference worker loop can execute
+local-Qwen or Claude tasks against its explicitly configured local checkout.
+
+Claude workers use the bridge's durable asynchronous job cancellation path.
+If an adapter cannot prove that execution stopped, Agent Relay records
+`blocked` with `execution_stopped: false`; it never turns a post-cancel result
+into false `succeeded` state.
+
+Retryable Claude bridge liveness or connection failures are returned to
+`waiting`, their lease is released, and the task's `retry_limit` bounds the
+fresh-sandbox retry. Treat a terminal failure as evidence that the bounded
+retry policy was exhausted or the error was not classified as transport-safe.
+
+The coordinator bearer is the admin/client credential. The worker's
+`--agent-token` is a separately enrolled, scoped credential. Revoke it with:
+
+```powershell
+agent-relay agents --url http://127.0.0.1:8788 --token $env:AR_RELAY_AUTH_TOKEN `
+  --revoke pc-b-claude --json
+```
+
+For coordinator-owned routing, add `--claim-next` to the worker command. Each
+poll asks for one highest-priority compatible task; the coordinator applies the worker's
+Agent Card and task workspace policy before granting the durable lease. The
+default list-and-claim loop remains available for compatibility.
+
+Filter the machine-readable Agent Card registry by task kind, capability, or
+truthful readiness:
+
+```powershell
+agent-relay agents --task-kind mechanical --capability bounded-edit `
+  --readiness ready --json
+```
+
+Workers refresh their Agent Card heartbeat after execution. A successful
+bounded result marks that worker `ready`; an adapter failure marks it
+`degraded`. Registration-only discovery remains `unknown`, so an executable's
+presence is never treated as proof of model access.
+
+For push-style clients, use the bounded SSE replay endpoint and reconnect with
+the last numeric event id:
+
+```text
+/tasks/{task_id}/events/stream?after=0&timeout=30
+```
+
+The JSON `/tasks/{task_id}/events?after=N` endpoint remains available for
+deterministic replay and inspection.
+
+Follow-up chains are linear and durable. Submit a child through
+`POST /chains/{chain_id}/steps` (or `chain-submit`) with an explicit
+predecessor terminal-state policy. Repeating the same step is idempotent; a
+live, failed, blocked, or cancelled predecessor cannot unlock a child unless
+that state is explicitly listed. Add `defer_until_ready: true` (or
+`--defer-until-ready`) to register a live predecessor's next step; terminal
+completion materializes it exactly once, and `/chains/{chain_id}/reconcile`
+replays pending activation after repair or restart. Pass only declared
+artifact IDs and bounded messages—never transcripts or implicit repository
+context. The reference worker fetches declared parent artifacts through the
+coordinator, verifies their hashes, and includes bounded parent-input evidence
+in the terminal receipt. Use `watch-chain` to poll the ordered materialized
+steps until the chain reaches a terminal or blocked state.
+
+Queue submissions may include `priority` (-1000 through 1000) and an
+ISO-8601 `deadline_at` with timezone. Claiming is coordinator-owned: higher
+priority wins, then the earliest deadline, then FIFO creation order. The
+coordinator expires overdue work only while it is unleased and queued; it does
+not forcibly interrupt a running worker.
+
+The `mcp` command exposes the durable coordinator through a small MCP surface:
+`submit`/`run`/`Agent`, bounded `dispatch`, `inspect`, `watch`, `cancel`, and
+`chain_submit`. It is a translation layer over the authenticated coordinator,
+not a second execution authority. Calls may provide a complete task contract or
+a natural-language `prompt`; prompt calls become durable tasks and default to
+read-only until `allowed_files` is explicitly declared.
+For a single-machine convenience path, add `--local-worker-backend` and
+`--local-worker-repo`; then `run`/`Agent` wait for a terminal receipt while
+`submit` remains asynchronous. Prompt calls may provide a `workdir` under the
+configured local-worker repository for `local-qwen` and `claude-task`; for
+`claude-mcp`, `workdir` is passed as a path on the remote MCP machine. The
+effective directory is recorded in the receipt. The local worker uses the same
+lease path as a separately launched worker, while remote MCP verification is
+explicitly output-only.
+
+To route durable tasks into an existing Claude MCP service, configure the
+explicit `claude-mcp` backend:
+
+```powershell
+$env:AR_CLAUDE_MCP_URL = "https://pc-b.example.test:8000/mcp"
+$env:AR_CLAUDE_MCP_WORKDIR = "."
+$env:AR_CLAUDE_MCP_AUTH_TOKEN = "<optional-token>"
+agent-relay worker --url http://127.0.0.1:8788 --token $env:AR_RELAY_AUTH_TOKEN `
+  --worker-id pc-a-claude-mcp --backend claude-mcp --repo C:\work\repo --claim-next
+```
+
+Non-loopback plain HTTP is rejected unless
+`AR_CLAUDE_MCP_ALLOW_INSECURE_LAN=1` is explicitly set for a trusted private
+LAN development service. This backend records remote MCP output and transport
+identity; it does not claim local patch, sandbox, or verification authority.
+
+The repository also includes a loopback protocol/fault-injection acceptance
+harness:
+
+```powershell
+py -3 scripts\acceptance_control_plane.py
+py -3 scripts\acceptance_tls.py
+```
+
+When Claude credentials are available, the reproducible lane gates are:
+
+```powershell
+py -3 scripts\probe_claude_lane.py --timeout 40
+py -3 scripts\smoke_claude_task.py
+py -3 scripts\smoke_claude_cancellation.py
+py -3 scripts\smoke_claude_interruption.py
+```
+
+These prove capability discovery, a bounded parent-verified edit, and a real
+worker-confirmed cancellation boundary. They do not substitute for the
+physical two-PC interruption/recovery gate.
+
+The interruption smoke additionally kills a separate worker after `running`
+and requires lease-expiry reassignment plus a fresh verified Claude receipt.
+
 Run the local worker through the existing bounded contract:
 
 ```powershell
 agent-relay delegate --backend local-qwen --task .\task.json --repo . --require-triage --json
 ```
 
-Start the Claude task bridge for an allowlisted workspace:
+Run Claude through an ephemeral allowlisted A2A bridge and disposable Git
+sandbox. The bridge script is vendored with the source checkout; installed
+packages should set `AR_CLAUDE_BRIDGE_SCRIPT` to an equivalent server script.
+
+```powershell
+agent-relay delegate --backend claude-task --task .\task.json --repo . --json
+```
+
+The low-level bridge can still be started directly for bridge-specific jobs or
+native-team experiments:
 
 ```powershell
 powershell -NoProfile -File .\lanes\claude-task\scripts\start_claude_a2a_server.ps1 -WorkspaceRoot (Get-Location).Path
 ```
+
+An already-running Claude A2A daemon can be used instead of starting a local
+ephemeral bridge. Configure the worker process with:
+
+```powershell
+$env:AR_CLAUDE_A2A_SERVER_URL = "https://pc-b.example.test:8787"
+$env:AR_CLAUDE_A2A_AUTH_TOKEN = "<claude-daemon-token>"
+$env:AR_CLAUDE_A2A_CA_CERT = "C:\agent-relay\lan-ca.pem" # private CA only
+$env:AR_CLAUDE_A2A_WORKSPACE_PATH = "."
+agent-relay delegate --backend claude-task --task .\task.json --repo . --json
+```
+
+The adapter submits and polls the daemon's durable job endpoint, propagates a
+cancel event, and preserves the remote patch/receipt as the remote worker's
+verification evidence. Non-loopback daemon binding requires both bearer auth
+and TLS; plain HTTP is limited to loopback or a secure tunnel.
 
 Submit a Claude A2A packet with:
 
@@ -61,7 +268,7 @@ powershell -NoProfile -File .\lanes\claude-task\scripts\claude_a2a_delegate.ps1 
 Run the independent Codex subscription review against the current checkout:
 
 ```powershell
-agent-relay review --repo . --model gpt-5.6-sol --reasoning-effort high --uncommitted --json
+agent-relay review --repo . --model gpt-5.6-luna --reasoning-effort high --uncommitted --json
 ```
 
 Ask the Google-stack specialist in plan mode:
@@ -85,6 +292,6 @@ The evidence-backed role matrix and current local readiness receipts are in
 
 ## Compatibility names
 
-`lcd`, `subagent`, `ollama`, and `codex-ollama` remain supported for existing
+`agent-relay`, `subagent`, `ollama`, and `codex-ollama` remain supported for existing
 scripts. New documentation and new integrations should use `agent-relay`,
-`local-qwen`, `claude-task`, `codex-review`, and `agy-antigravity`.
+`local-qwen`, `claude-task`, `claude-mcp`, `codex-review`, and `agy-antigravity`.
