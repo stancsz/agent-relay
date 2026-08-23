@@ -1010,6 +1010,12 @@ class A2AState:
                 # whose fallback verifier runs after the worker sequence.
                 # Keep the full-copy fallback for older packets without a
                 # recognizable file list.
+                input_paths = [
+                    item["path"]
+                    for item in task.get("inputs", [])
+                    if isinstance(item, dict) and isinstance(item.get("path"), str)
+                ]
+                verifier_include_paths.extend(input_paths)
                 objective_paths = re.findall(
                     r"(?<![A-Za-z0-9_./-])(?:seasons|docs|tools|engine)/[^\s,;`\"']+\.md",
                     str(task.get("objective", "")),
