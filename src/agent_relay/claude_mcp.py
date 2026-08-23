@@ -19,6 +19,13 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from .claude_task import (
+    babystep_progress_contract,
+    parse_collaboration_handoff,
+    parse_progress_evidence,
+    progress_evidence_satisfied,
+    remote_collaboration_contract,
+)
 from .result import DelegationResult, ResultStatus
 from .task import DelegationTask
 
@@ -168,10 +175,24 @@ def _text_from_tool_result(result: Mapping[str, Any]) -> str:
 
 
 def _prompt(task: DelegationTask) -> str:
+    collaboration = remote_collaboration_contract()
+    progress = babystep_progress_contract()
     lines = [
         "You are executing one bounded task through Agent Relay.",
         f"Objective: {task.objective}",
         "Write scope: " + (", ".join(task.allowed_files) if task.allowed_files else "none; do not modify files"),
+        "Remote collaboration contract:",
+        f"- mode: {collaboration['mode']}",
+        f"- context policy: {collaboration['context_policy']}",
+        *[f"- before_edit: {item}" for item in collaboration["before_edit"]],
+        "- required handoff fields: " + ", ".join(collaboration["handoff_fields"]),
+        f"- question policy: {collaboration['question_policy']}",
+        "Context references available to the remote service: " + (", ".join(task.context) if task.context else "none"),
+        "Use these literal final-report labels: observed_remote_state:, assumptions:, questions_for_orchestrator:, recommended_next_prompt:, changed_files_and_scope:, verification_evidence:, blockers:.",
+        "Required babystep evidence:",
+        f"- {progress['evidence_format']}",
+        *[f"- Emit exactly one progress line for {step}; use not_applicable only when it truly does not apply and explain why." for step in progress["steps"]],
+        "Missing, vague, or blocked progress evidence fails the transport receipt closed.",
     ]
     for label, values in (
         ("Requirements", task.requirements),
@@ -182,7 +203,10 @@ def _prompt(task: DelegationTask) -> str:
         if values:
             lines.append(f"{label}:\n" + "\n".join(f"- {item[:2_000]}" for item in values[:16]))
     lines.append(
-        "Return a concise final report describing what you observed or changed, "
+        "Return a concise final report containing the required parent handoff fields "
+        "(observed_remote_state, assumptions, questions_for_orchestrator, "
+        "recommended_next_prompt, changed_files_and_scope, verification_evidence, "
+        "and blockers), describing what you observed or changed, "
         "what verification ran, and any blockers. Do not commit, push, deploy, "
         "or claim verification that did not run."
     )
@@ -267,7 +291,11 @@ def run_claude_mcp_task(
         output = _text_from_tool_result(result)
         failed = result.get("isError") is True
         cancelled = bool(cancel_event and cancel_event.is_set())
-        status = ResultStatus.BLOCKED if cancelled else (ResultStatus.WORKER_ERROR if failed else ResultStatus.SUCCESS)
+        progress = babystep_progress_contract()
+        progress_check = progress_evidence_satisfied(output, progress)
+        status = ResultStatus.BLOCKED if cancelled else (
+            ResultStatus.WORKER_ERROR if failed or not progress_check["satisfied"] else ResultStatus.SUCCESS
+        )
         server_info: Mapping[str, Any] = {}
         if isinstance(initialize, Mapping) and isinstance(initialize.get("result"), Mapping):
             candidate = initialize["result"].get("serverInfo")
@@ -277,7 +305,7 @@ def run_claude_mcp_task(
             task_id=task.task_id,
             status=status,
             summary=output or "Claude MCP task completed without textual output.",
-            blockers=(output[:1_000],) if failed or cancelled else (),
+            blockers=(output[:1_000],) if failed or cancelled else (("babystep progress evidence is incomplete",) if not progress_check["satisfied"] else ()),
             attempts=1,
             sandbox_mode="remote-mcp",
             metadata={
@@ -287,6 +315,12 @@ def run_claude_mcp_task(
                 "remote_host": hostname,
                 "remote_workdir": selected.workdir,
                 "verification_authority": "remote-mcp-output-only",
+                "collaboration_contract": remote_collaboration_contract(),
+                "progress_contract": progress,
+                "progress_evidence": progress_check,
+                "progress_evidence_lines": parse_progress_evidence(output),
+                "remote_worker_handoff": output[:4_000],
+                "collaboration_handoff_fields": parse_collaboration_handoff(output),
                 "main_worktree_unchanged": None,
                 "execution_stopped": False if cancelled else None,
                 "server_info": server_info,

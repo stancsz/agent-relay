@@ -7,6 +7,8 @@
 | E-PM-001 | PM capability inventory reaches at least 80% implemented source/test coverage under an explicit unweighted denominator, with partial and conditional capabilities separately identified | Codex | current-state-audit.md calculation, roadmap status review, focused tests | passing |
 | E-LAN-001 | A coordinator and worker run on this PC but communicate through the real 10.x interface, with authenticated discovery, submission, lease/receipt lifecycle, reconnect/inspect, and restart evidence | Codex | process logs, HTTP responses, task receipt, restart/reconnect output, exact address | passing |
 | E-HARDEN-001 | Every failure found during the flight test is either fixed with regression coverage or recorded as an explicit remaining blocker in docs/pm; no false-success path remains | Codex | failure log, patch, regression tests, PM update, full validation | passing |
+| E-CONTEXT-001 | Before Sol review, bounded remote context, worker handoff questions, parent-owned verification authority, and effective next-prompt guidance are available to the parent and Sol without transcripts or repository dumps | Codex | packet/prompt contract, Sol prompt test, remote MCP prompt test, full validation | passing |
+| E-PROGRESS-001 | Every required Claude babystep emits concrete progress/evidence, and missing or blocked evidence fails the transport and parent acceptance gates closed before Sol review | Codex | progress-contract validator/parser, A2A/MCP receipt enforcement, fail-closed regression, full validation | passing |
 
 ## Dispatch Evaluations
 
@@ -16,6 +18,7 @@
 | GL-agy-cli-delegation-O2 | GL-agy-cli-delegation-O2-24fafbcbc82a | none | native capability probe passed, explicit registry supplied, team spawn failed with `Agent type 'worker' not found. Available agents: none`; `git status` and content fingerprints unchanged | rejected | Claude's MCP runtime does not load `--agents` JSON as teammate types; project agent definitions are required. |
 | GL-agy-cli-delegation-O3 | GL-agy-cli-delegation-O3-2e1512ba2294 | none | direct `claude --agent worker` probe succeeded, but native MCP team spawn still failed with `Agent type 'worker' not found. Available agents: none`; `git status` and content fingerprints unchanged | rejected | Native team transport remains blocked at teammate discovery despite project-scoped definitions; no implementation started. |
 | GL-roadmap-high80-lan-flight-O1 | GL-roadmap-high80-lan-flight-O1-8ecac80a8117 | none | `claude.cmd --print` exit 0 for worker and isolated verifier; `transport: cli-fallback`; HEAD/content/status unchanged | accepted | Read-only review independently confirmed the 19/23 (83%) methodology, one-PC boundary, truthful failures, and unproven physical two-PC/native-team claims. |
+| GL-roadmap-high80-lan-flight-C1 | goal-loop-context-contract-review-a164256747d3 | none | Fresh current-tree bridge accepted the digest-linked verifier packet, but Claude CLI returned no result; HEAD/content/status unchanged | inconclusive | Runtime Claude verifier could not complete. The implementation is accepted only on Codex-owned code review and passing regression tests; the external no-result failure remains a documented runtime blocker. |
 
 ## Codex final evidence
 
@@ -30,4 +33,6 @@
 - Full `PYTHONPATH=. pytest -q` remains red in 13 unrelated batch/delegate tests because their fixtures invoke unavailable Windows `py -3` commands on this macOS host; no AGY tests failed.
 - Windows validation in this checkout: `py -3 -m pytest -q` reached 100% with no failures; focused Claude/A2A suites also passed.
 - Refreshed the editable install with `py -3 -m pip install --editable .`; the installed `agent-relay --help` now exposes `serve`, `worker`, `submit`, and the durable coordinator command family.
+- Context-contract continuation: focused acceptance, Claude adapter, Claude MCP, A2A protocol/prompt, compile, and full-suite validation passed; the fresh bridge job `goal-loop-context-contract-review-a164256747d3` left the worktree unchanged but ended inconclusive because the Claude CLI returned no result.
+- Babystep-evidence continuation: A2A/MCP/parent adapters now require `inspect`, `plan`, `execute`, `verify`, and `handoff` evidence lines; missing or blocked lines fail closed. Focused contract and fail-closed tests pass.
 <!-- goal-loop:managed:end -->

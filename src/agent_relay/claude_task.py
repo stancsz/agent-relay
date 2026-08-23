@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import socket
 import ssl
@@ -42,6 +43,121 @@ from .verifier import run_verification
 
 class ClaudeTaskError(RuntimeError):
     """Raised when the bounded Claude task transport cannot start or finish."""
+
+
+COLLABORATION_HANDOFF_FIELDS = (
+    "observed_remote_state",
+    "assumptions",
+    "questions_for_orchestrator",
+    "recommended_next_prompt",
+    "changed_files_and_scope",
+    "verification_evidence",
+    "blockers",
+)
+
+BABYSTEP_PROGRESS_STEPS = ("inspect", "plan", "execute", "verify", "handoff")
+PROGRESS_LINE_RE = re.compile(
+    r"^PROGRESS\s+(?P<step>[a-z][a-z0-9_-]{0,31})\s+\|\s*"
+    r"status=(?P<status>done|not_applicable|blocked)\s*\|\s*"
+    r"evidence=(?P<evidence>.+)$",
+    re.IGNORECASE,
+)
+
+
+def parse_collaboration_handoff(text: str) -> dict[str, str]:
+    """Extract the small, labeled handoff fields from a worker report."""
+
+    values: dict[str, list[str]] = {}
+    current: str | None = None
+    allowed = set(COLLABORATION_HANDOFF_FIELDS)
+    for raw_line in str(text or "").splitlines():
+        line = raw_line.strip()
+        line = re.sub(r"^(?:[-*]\s+|#+\s*)", "", line)
+        match = re.match(
+            r"^(observed_remote_state|assumptions|questions_for_orchestrator|recommended_next_prompt|changed_files_and_scope|verification_evidence|blockers)\s*:\s*(.*)$",
+            line,
+            re.IGNORECASE,
+        )
+        if match:
+            current = match.group(1).lower()
+            values[current] = [match.group(2).strip()] if match.group(2).strip() else []
+        elif current and line:
+            values[current].append(line)
+    return {
+        field: "\n".join(parts).strip()[:4_000]
+        for field, parts in values.items()
+        if field in allowed and "\n".join(parts).strip()
+    }
+
+
+def remote_collaboration_contract() -> dict[str, Any]:
+    """Return the bounded handoff contract used for remote Claude work."""
+
+    return {
+        "mode": "bounded-remote",
+        "context_policy": "declared-inputs-and-target-paths-only",
+        "before_edit": [
+            "Summarize the observable remote state and relevant assumptions from the declared inputs and target paths.",
+            "Identify missing facts that could change the safe implementation or verification decision.",
+            "Ask the parent orchestrator an exact question and stop/mark blocked when a missing fact is material; do not guess.",
+        ],
+        "handoff_fields": [
+            "observed_remote_state",
+            "assumptions",
+            "questions_for_orchestrator",
+            "recommended_next_prompt",
+            "changed_files_and_scope",
+            "verification_evidence",
+            "blockers",
+        ],
+        "question_policy": "Questions must be concrete, answerable from the parent machine or an explicitly requested bounded input; never request a repository dump or transcript.",
+    }
+
+
+def babystep_progress_contract() -> dict[str, Any]:
+    """Return the exact progress lines required before a Claude handoff."""
+
+    return {
+        "mode": "babystep-evidence",
+        "steps": list(BABYSTEP_PROGRESS_STEPS),
+        "evidence_format": "PROGRESS <step> | status=<done|not_applicable|blocked> | evidence=<concrete fact>",
+    }
+
+
+def parse_progress_evidence(text: str, steps: tuple[str, ...] = BABYSTEP_PROGRESS_STEPS) -> dict[str, dict[str, str]]:
+    """Extract exact per-step evidence lines from a Claude report."""
+
+    allowed = set(steps)
+    parsed: dict[str, dict[str, str]] = {}
+    for raw_line in str(text or "").splitlines():
+        match = PROGRESS_LINE_RE.match(raw_line.strip())
+        if not match or match.group("step") not in allowed:
+            continue
+        evidence = match.group("evidence").strip()
+        if evidence:
+            parsed[match.group("step")] = {
+                "status": match.group("status").lower(),
+                "evidence": evidence[:2_000],
+            }
+    return parsed
+
+
+def progress_evidence_satisfied(text: str, contract: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Summarize whether every required babystep has usable evidence."""
+
+    selected = contract if isinstance(contract, Mapping) else babystep_progress_contract()
+    raw_steps = selected.get("steps", BABYSTEP_PROGRESS_STEPS)
+    steps = tuple(step for step in raw_steps if isinstance(step, str)) if isinstance(raw_steps, list) else BABYSTEP_PROGRESS_STEPS
+    parsed = parse_progress_evidence(text, steps)
+    missing = [step for step in steps if step not in parsed]
+    blocked = [step for step, item in parsed.items() if item.get("status") == "blocked"]
+    return {
+        "required": True,
+        "satisfied": not missing and not blocked,
+        "missing_steps": missing,
+        "blocked_steps": blocked,
+        "evidence": parsed,
+    }
 
 
 def _restore_remote_targets_from_head(repo: Path, sandbox: Path, paths: tuple[str, ...]) -> bool:
@@ -198,6 +314,8 @@ def build_claude_task_packet(
         "constraints": constraints[:16],
         "verification": list(task.verification)[:12],
         "inputs": _context_inputs(repo, task),
+        "collaboration": remote_collaboration_contract(),
+        "progress_contract": babystep_progress_contract(),
         "profile": "agent-relay",
     }
     packet["context_digest"] = _packet_digest(packet)
@@ -587,6 +705,25 @@ def _run_remote_claude_task(
         auth_token=config.remote_auth_token,
     )
     result = _remote_result(task, response, endpoint=endpoint, started=started)
+    raw_worker_output = str(response.get("output", ""))
+    progress_check = progress_evidence_satisfied(raw_worker_output, packet.get("progress_contract"))
+    result_metadata = dict(result.metadata)
+    result_metadata.update({
+        "claude_packet_context_digest": packet["context_digest"],
+        "context_inputs": packet["inputs"],
+        "collaboration_contract": packet["collaboration"],
+        "progress_contract": packet["progress_contract"],
+        "progress_evidence": progress_check,
+        "remote_worker_handoff": raw_worker_output[:4_000],
+        "collaboration_handoff_fields": parse_collaboration_handoff(raw_worker_output),
+    })
+    result = replace(result, metadata=result_metadata)
+    if result.status is ResultStatus.SUCCESS and not progress_check["satisfied"]:
+        result = replace(
+            result,
+            status=ResultStatus.FAILED_VERIFICATION,
+            blockers=tuple(dict.fromkeys((*result.blockers, "babystep progress evidence is incomplete"))),
+        )
     if result.status is not ResultStatus.SUCCESS:
         return result
 
@@ -695,6 +832,10 @@ def run_claude_task(
                     cancel_event=cancel_event,
                 )
             status = _map_status(str(response.get("status", "failed")))
+            raw_worker_output = str(response.get("output", ""))
+            progress_check = progress_evidence_satisfied(raw_worker_output, packet.get("progress_contract"))
+            if status is ResultStatus.SUCCESS and not progress_check["satisfied"]:
+                status = ResultStatus.FAILED_VERIFICATION
             execution_stopped = str(response.get("status", "")) == "cancelled"
             changed = changed_files(sandbox.path)
             unexpected = sorted(set(changed) - set(task.allowed_files))
@@ -719,6 +860,8 @@ def run_claude_task(
                 blockers.append(f"Claude changed files outside scope: {', '.join(unexpected)}")
             if status is ResultStatus.BLOCKED:
                 blockers.append(str(response.get("output", "Claude task was blocked"))[:1000])
+            if not progress_check["satisfied"]:
+                blockers.append("babystep progress evidence is incomplete")
             return DelegationResult(
                 task_id=task.task_id,
                 status=status,
@@ -736,6 +879,12 @@ def run_claude_task(
                     "server_receipt": response.get("server_receipt", {}),
                     "main_worktree_unchanged": True,
                     "claude_packet_digest": packet["context_digest"],
+                    "context_inputs": packet["inputs"],
+                    "collaboration_contract": packet["collaboration"],
+                    "progress_contract": packet["progress_contract"],
+                    "progress_evidence": progress_check,
+                    "remote_worker_handoff": raw_worker_output[:4_000],
+                    "collaboration_handoff_fields": parse_collaboration_handoff(raw_worker_output),
                     "worktree_status": list(worktree_status(sandbox.path)),
                     "execution_stopped": execution_stopped,
                 },

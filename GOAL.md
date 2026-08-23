@@ -457,13 +457,13 @@ This project is not:
 ## Goal Loop Control
 
 - goal_id: GL-roadmap-high80-lan-flight
-- goal_revision: 3
+- goal_revision: 5
 - status: running
 - roadmap_path: ROADMAP.md
 - roadmap_item_id: R-PM-HIGH80-LAN-001
 - eval_path: EVAL.md
 - active_lease_until: null
-- last_checkpoint: CP-004
+- last_checkpoint: CP-007
 - remaining_criteria: none
 
 ## Claude Dispatch Ledger
@@ -474,4 +474,5 @@ This project is not:
 | GL-agy-cli-delegation-O2 | codex | orchestrator | a2a-GL-agy-cli-delegation-O2-24fafbcb | GL-agy-cli-delegation-O2-24fafbcbc82a | R-AGY-CLI-001 | coordinate standalone AGY CLI adapter, tests, docs, and verification with configured worker/verifier types | failed | 2026-08-22T01:48:21Z | 2026-08-22T01:48:21Z | CP-000 |
 | GL-agy-cli-delegation-O3 | codex | orchestrator | a2a-GL-agy-cli-delegation-O3-2e1512ba | GL-agy-cli-delegation-O3-2e1512ba2294 | R-AGY-CLI-001 | coordinate standalone AGY CLI adapter, tests, docs, project agent definitions, and verification | blocked | 2026-08-22T01:50:47Z | 2026-08-22T01:50:47Z | CP-000 |
 | GL-roadmap-high80-lan-flight-O1 | codex | claude-orchestrator | unresolved | GL-roadmap-high80-lan-flight-O1-8ecac80a8117 | R-PM-HIGH80-LAN-001 | coordinate PM hardening and one-PC 10.x LAN flight test | accepted | 2026-08-23T16:48:27Z | 2026-08-23T16:49:48Z | CP-004 |
+| GL-roadmap-high80-lan-flight-C1 | codex | claude-verifier | unresolved | goal-loop-context-contract-review-a164256747d3 | R-PM-HIGH80-LAN-001 | independently review bounded remote collaboration context and Sol handoff contract | inconclusive | 2026-08-23T17:18:33Z | 2026-08-23T17:23:35Z | CP-005 |
 <!-- goal-loop:managed:end -->

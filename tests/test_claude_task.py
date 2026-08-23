@@ -13,8 +13,11 @@ if str(SCRIPT_ROOT) not in sys.path:
 from claude_a2a_server import A2AServer, A2AState  # noqa: E402
 
 from agent_relay.claude_task import (
+    babystep_progress_contract,
     ClaudeTaskConfig,
     build_claude_task_packet,
+    parse_collaboration_handoff,
+    parse_progress_evidence,
     run_claude_task,
     _run_async_bridge_job,
     _transport_failure_metadata,
@@ -47,8 +50,73 @@ def test_build_claude_task_packet_is_bounded_and_digest_linked(tmp_path: Path) -
     assert packet["workspace"] == {"path": ".", "target_paths": ["value.py"]}
     assert packet["verification"] == ["python -c \"from value import VALUE; assert VALUE == 2\""]
     assert packet["inputs"][0]["path"] == "value.py"
+    assert packet["collaboration"]["mode"] == "bounded-remote"
+    assert "questions_for_orchestrator" in packet["collaboration"]["handoff_fields"]
+    assert packet["progress_contract"]["mode"] == "babystep-evidence"
+    assert packet["progress_contract"]["steps"] == ["inspect", "plan", "execute", "verify", "handoff"]
     assert len(packet["context_digest"]) == 64
     assert "conversation" not in packet
+
+
+def test_parse_collaboration_handoff_extracts_labeled_parent_questions() -> None:
+    report = """observed_remote_state: target is present
+assumptions: only the declared file is authoritative
+questions_for_orchestrator: should the generated fixture be retained?
+recommended_next_prompt: confirm the retention policy
+verification_evidence: pytest -q (exit 0)
+blockers: none
+"""
+
+    handoff = parse_collaboration_handoff(report)
+
+    assert handoff["questions_for_orchestrator"].startswith("should the generated")
+    assert handoff["recommended_next_prompt"] == "confirm the retention policy"
+    assert handoff["verification_evidence"] == "pytest -q (exit 0)"
+
+
+def test_parse_progress_evidence_requires_concrete_lines_for_every_babystep() -> None:
+    report = """PROGRESS inspect | status=done | evidence=read value.py
+PROGRESS plan | status=done | evidence=decided VALUE must be two
+PROGRESS execute | status=done | evidence=changed value.py only
+PROGRESS verify | status=done | evidence=pytest -q exit_code=0
+PROGRESS handoff | status=done | evidence=reported patch and verification
+"""
+
+    parsed = parse_progress_evidence(report)
+
+    assert set(parsed) == set(babystep_progress_contract()["steps"])
+    assert parsed["verify"]["evidence"] == "pytest -q exit_code=0"
+
+
+def test_remote_result_fails_closed_when_babystep_evidence_is_missing(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "value.py").write_text("VALUE = 1\n", encoding="utf-8")
+    monkeypatch.setattr(
+        claude_task_module,
+        "_run_async_bridge_job",
+        lambda *_args, **_kwargs: {
+            "status": "done",
+            "output": "worker says done without an auditable progress receipt",
+            "changed_paths": [],
+            "patch": "",
+            "server_receipt": {"transport": "cli-fallback", "accepted_by_transport": True},
+        },
+    )
+
+    result = run_claude_task(
+        replace(_task(), verification=()),
+        tmp_path,
+        config=ClaudeTaskConfig(
+            remote_url="https://pc-b.example.test:8787",
+            remote_auth_token="remote-secret",
+        ),
+    )
+
+    assert result.status is ResultStatus.FAILED_VERIFICATION
+    assert result.metadata["progress_evidence"]["satisfied"] is False
+    assert set(result.metadata["progress_evidence"]["missing_steps"]) == {
+        "inspect", "plan", "execute", "verify", "handoff"
+    }
+    assert "babystep progress evidence is incomplete" in result.blockers
 
 
 def test_claude_task_missing_bridge_is_explicit_and_preserves_main_repo(tmp_path: Path) -> None:
@@ -102,7 +170,7 @@ def test_claude_task_can_dispatch_to_existing_remote_bridge(tmp_path: Path, monk
         captured.update({"base": base, "packet": packet, "auth_token": auth_token})
         return {
             "status": "done",
-            "output": "remote Claude completed the task",
+            "output": "PROGRESS inspect | status=done | evidence=read value.py\nPROGRESS plan | status=done | evidence=planned bounded change\nPROGRESS execute | status=not_applicable | evidence=remote fixture returned no patch\nPROGRESS verify | status=done | evidence=parent verification has no commands\nPROGRESS handoff | status=done | evidence=returned bounded receipt",
             "changed_paths": [],
             "patch": "",
             "server_receipt": {"transport": "mcp", "accepted_by_transport": True},
@@ -150,7 +218,7 @@ def test_remote_claude_result_runs_parent_owned_verification_and_scope_gate(
         "_run_async_bridge_job",
         lambda *_args, **_kwargs: {
             "status": "done",
-            "output": "remote Claude returned a bounded patch",
+            "output": "PROGRESS inspect | status=done | evidence=read value.py\nPROGRESS plan | status=done | evidence=planned VALUE update\nPROGRESS execute | status=done | evidence=returned value.py patch\nPROGRESS verify | status=done | evidence=parent ran declared check\nPROGRESS handoff | status=done | evidence=returned patch and receipt",
             "changed_paths": ["value.py"],
             "patch": (
                 "diff --git a/value.py b/value.py\n"
@@ -294,7 +362,7 @@ def test_claude_task_wraps_bridge_result_in_sandbox_and_parent_verification(
         "_request_json",
         lambda *_args, **_kwargs: {
             "status": "done",
-            "output": "Claude completed the bounded task.",
+            "output": "PROGRESS inspect | status=done | evidence=read value.py\nPROGRESS plan | status=done | evidence=planned bounded task\nPROGRESS execute | status=not_applicable | evidence=fake bridge made no edit\nPROGRESS verify | status=done | evidence=parent ran pytest exit_code=0\nPROGRESS handoff | status=done | evidence=returned bounded task receipt",
             "server_receipt": {"transport": "cli-fallback"},
         },
     )

@@ -14,14 +14,16 @@ import urllib.request
 from argparse import Namespace
 from pathlib import Path
 
-from a2a_protocol import ProtocolError, build_task, digest_without_context_digest, validate_task
+from a2a_protocol import ProtocolError, build_task, digest_without_context_digest, progress_evidence_satisfied, validate_task
 import claude_a2a_server as a2a_server
 from claude_a2a_server import (
     A2AServer,
     A2AState,
     build_cli_delegate_command,
+    isolated_cli_verifier_workspace,
     is_client_disconnect,
     is_native_capability_failure,
+    render_prompt,
 )
 import claude_mcp_delegate as mcp_delegate
 
@@ -62,6 +64,49 @@ def test_cli_fallback_groups_target_paths_for_powershell_array_binding() -> None
     assert json.loads(command[target_flag + 1]) == ["README.md", "GOAL.md"]
     agents_flag = command.index("-AgentsJson")
     assert command[agents_flag + 1] == '{"claude-worker":{"description":"bounded worker"}}'
+
+
+def test_remote_collaboration_contract_is_validated_and_rendered() -> None:
+    collaboration = {
+        "mode": "bounded-remote",
+        "context_policy": "declared-inputs-and-target-paths-only",
+        "before_edit": ["summarize remote state", "ask exact questions when blocked"],
+        "handoff_fields": ["observed_remote_state", "questions_for_orchestrator", "recommended_next_prompt"],
+        "question_policy": "ask concrete questions and do not guess",
+    }
+    progress = {
+        "mode": "babystep-evidence",
+        "steps": ["inspect", "plan", "execute", "verify", "handoff"],
+        "evidence_format": "PROGRESS <step> | status=<done|not_applicable|blocked> | evidence=<concrete fact>",
+    }
+    task = build_task(
+        task_id="collaboration-contract",
+        target_role="worker",
+        operation="work",
+        target_paths=["target.txt"],
+        objective="Inspect one bounded target.",
+        acceptance_criteria=["Return the handoff."],
+        constraints=["Do not edit unrelated files."],
+        inputs=[],
+        collaboration=collaboration,
+        progress_contract=progress,
+    )
+    validate_task(task)
+    prompt = render_prompt(task)
+
+    assert "Parent collaboration contract" in prompt
+    assert "questions_for_orchestrator" in prompt
+    assert "recommended_next_prompt" in prompt
+    assert "repository dump or transcript" in prompt
+    assert "Required babystep evidence" in prompt
+    assert "Emit exactly one line for `inspect`" in prompt
+    assert progress_evidence_satisfied(
+        "\n".join(
+            f"PROGRESS {step} | status=done | evidence=fixture evidence"
+            for step in progress["steps"]
+        ),
+        progress,
+    )["satisfied"] is True
 
 
 def test_agent_type_default_omission() -> None:

@@ -30,7 +30,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from a2a_protocol import MAX_PACKET_BYTES, MAX_PATCH_CHARS, MAX_TEXT_CHARS, ProtocolError, digest_without_context_digest, validate_task, validate_result
+from a2a_protocol import MAX_PACKET_BYTES, MAX_PATCH_CHARS, MAX_TEXT_CHARS, ProtocolError, digest_without_context_digest, progress_evidence_satisfied, validate_task, validate_result
 from bridge_state import ProfileStore, StateError, atomic_write, utc_epoch
 
 
@@ -47,6 +47,24 @@ def is_native_capability_failure(value: object) -> bool:
 
 def json_bytes(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def cli_result_text(receipt: dict[str, Any]) -> str:
+    """Extract the bounded Claude report from a PowerShell adapter receipt."""
+
+    nested_stdout = receipt.get("stdout") if isinstance(receipt, dict) else None
+    if not nested_stdout and isinstance(receipt, dict) and receipt.get("stdout_b64"):
+        try:
+            nested_stdout = base64.b64decode(receipt["stdout_b64"], validate=True).decode("utf-8", errors="replace")
+        except (ValueError, UnicodeError):
+            nested_stdout = ""
+    if isinstance(nested_stdout, str) and nested_stdout.strip():
+        try:
+            nested = json.loads(nested_stdout.strip())
+            return str(nested.get("result", ""))
+        except json.JSONDecodeError:
+            return nested_stdout
+    return ""
 
 
 def status_paths(status: str) -> set[str]:
@@ -165,6 +183,37 @@ def render_prompt(task: dict[str, Any], profile_context: dict[str, Any] | None =
     inputs = []
     for item in task["inputs"]:
         inputs.append(f"- {item['path']} (sha256 {item['sha256']}):\n{item['excerpt']}")
+    collaboration_lines: list[str] = []
+    collaboration = task.get("collaboration")
+    if isinstance(collaboration, dict):
+        collaboration_lines = [
+            "",
+            "## Parent collaboration contract",
+            f"Mode: {collaboration['mode']}",
+            f"Context policy: {collaboration['context_policy']}",
+            "Before editing:",
+            *[f"- {item}" for item in collaboration["before_edit"]],
+            f"Question policy: {collaboration['question_policy']}",
+            "Required parent handoff fields:",
+            *[f"- {field}" for field in collaboration["handoff_fields"]],
+            "Use the declared inputs and target paths only; do not request or transmit a repository dump or transcript.",
+            "If safe progress depends on missing remote facts, stop and state the exact question for the parent orchestrator instead of guessing.",
+            "At the end, use these literal labels so the parent can form the next prompt: observed_remote_state:, assumptions:, questions_for_orchestrator:, recommended_next_prompt:, changed_files_and_scope:, verification_evidence:, blockers:.",
+        ]
+    progress_lines: list[str] = []
+    progress = task.get("progress_contract")
+    if isinstance(progress, dict):
+        progress_lines = [
+            "",
+            "## Required babystep evidence",
+            f"Mode: {progress['mode']}",
+            f"Format: {progress['evidence_format']}",
+            *[
+                f"Emit exactly one line for `{step}` before the final report; use status=not_applicable only when the step truly does not apply and explain why in evidence."
+                for step in progress["steps"]
+            ],
+            "A missing, vague, or blocked progress line fails the task receipt closed; do not claim completion without concrete evidence such as a file inspected, decision made, command/exit code, or handoff fact.",
+        ]
     profile_lines: list[str] = []
     if profile_context:
         profile_lines = ["", "## Bounded profile context", f"Profile: {profile_context.get('profile', 'default')}"]
@@ -200,9 +249,11 @@ def render_prompt(task: dict[str, Any], profile_context: dict[str, Any] | None =
         "",
         "## Constraints",
         *[f"- {constraint}" for constraint in task["constraints"]],
+        *collaboration_lines,
+        *progress_lines,
         *profile_lines,
         "",
-        "Return a concise report of what you actually did, commands and exit codes, files changed, risks, and unmet criteria. Do not claim a check you did not run.",
+        "Return a concise report with the required parent handoff fields, actual commands and exit codes, files changed, risks, and unmet criteria. Do not claim a check you did not run.",
     ])
 
 
@@ -740,6 +791,8 @@ class A2AState:
                     "acceptance_criteria": task["acceptance_criteria"],
                     "constraints": task["constraints"],
                     "inputs": task["inputs"],
+                    "collaboration": task.get("collaboration"),
+                    "progress_contract": task.get("progress_contract"),
                     "profile_context": profile_context,
                 },
                 "members": members,
@@ -796,7 +849,9 @@ class A2AState:
         new_status_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]))
         worktree_changed = before["change_fingerprint"] != after["change_fingerprint"]
         cleanup_ok = not mcp_receipt.get("cleanup_error")
-        mcp_ok = bool(mcp_receipt.get("accepted_by_transport")) and process.returncode == 0 and cleanup_ok
+        output = str(mcp_receipt.get("result_text", ""))[:MAX_TEXT_CHARS]
+        progress_check = progress_evidence_satisfied(output, task.get("progress_contract"))
+        mcp_ok = bool(mcp_receipt.get("accepted_by_transport")) and process.returncode == 0 and cleanup_ok and bool(progress_check["satisfied"])
         team_complete = not team_mode or bool(mcp_receipt.get("team_complete"))
         verifier_requested = task["target_role"] == "verifier" or any(member["role"] == "verifier" for member in task.get("team", {}).get("members", []))
         verifier_clean = not verifier_requested or (
@@ -814,7 +869,6 @@ class A2AState:
             status = "failed"
         else:
             status = "done"
-        output = str(mcp_receipt.get("result_text", ""))[:MAX_TEXT_CHARS]
         if not output:
             output = str(mcp_receipt.get("protocol_error", "MCP client returned no result"))[:MAX_TEXT_CHARS]
         evidence = [
@@ -848,6 +902,8 @@ class A2AState:
                 "protocol_error": mcp_receipt.get("protocol_error"),
                 "cleanup_error": mcp_receipt.get("cleanup_error"),
                 "accepted_by_transport": mcp_ok,
+                "progress_evidence": progress_check,
+                "progress_evidence_satisfied": bool(progress_check["satisfied"]),
                 "verifier_clean": verifier_clean,
                 "change_expectation_satisfied": change_ok,
                 "worktree_changed": worktree_changed,
@@ -1136,7 +1192,12 @@ class A2AState:
         new_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]) | set(target_changed_paths))
         new_status_paths = sorted(set(after["status_paths"]) - set(before["status_paths"]))
         worktree_changed = before["change_fingerprint"] != after["change_fingerprint"]
-        run_ok = all(bool(receipt.get("accepted")) and returncode == 0 for _, receipt, returncode in receipts)
+        progress_checks = [
+            (role, progress_evidence_satisfied(cli_result_text(receipt), task.get("progress_contract")))
+            for role, receipt, _ in receipts
+        ]
+        progress_ok = all(bool(check["satisfied"]) for _, check in progress_checks)
+        run_ok = all(bool(receipt.get("accepted")) and returncode == 0 for _, receipt, returncode in receipts) and progress_ok
         verifier_receipt = next((receipt for role, receipt, _ in receipts if role == "verifier"), None)
         verifier_clean = not run_verifier or bool(
             verifier_receipt
@@ -1159,12 +1220,7 @@ class A2AState:
                 except (ValueError, UnicodeError):
                     nested_stdout = ""
             result_text = ""
-            if isinstance(nested_stdout, str) and nested_stdout.strip():
-                try:
-                    nested = json.loads(nested_stdout.strip())
-                    result_text = str(nested.get("result", ""))
-                except json.JSONDecodeError:
-                    result_text = nested_stdout
+            result_text = cli_result_text(receipt)
             output_parts.append(f"[{role}] {result_text or receipt.get('json_parse_error') or receipt.get('stderr') or 'CLI delegate returned no result'}")
         output = "\n\n".join(output_parts) or "CLI fallback did not run a role"
         evidence = [
@@ -1189,6 +1245,8 @@ class A2AState:
                 "protocol_error": next((receipt.get("json_parse_error") for _, receipt, _ in receipts if receipt.get("json_parse_error")), None),
                 "stdout_parse_warning": next((receipt.get("stdout_parse_warning") for _, receipt, _ in receipts if receipt.get("stdout_parse_warning")), None),
                 "accepted_by_transport": run_ok,
+                "progress_evidence_satisfied": progress_ok,
+                "progress_evidence": {role: check for role, check in progress_checks},
                 "verifier_clean": verifier_clean,
                 "verifier_isolated": verifier_isolated,
                 "change_expectation_satisfied": change_ok,
@@ -1215,6 +1273,7 @@ class A2AState:
                         "changed_paths_after": receipt.get("changed_paths_after"),
                         "staged_paths_after": receipt.get("staged_paths_after"),
                         "json_parse_error": receipt.get("json_parse_error"),
+                        "progress_evidence": next((check for candidate_role, check in progress_checks if candidate_role == role), {}),
                     }
                     for role, receipt, _ in receipts
                 ],

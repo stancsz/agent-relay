@@ -306,6 +306,34 @@ def slim_receipt(session: McpSession) -> dict[str, Any]:
 
 def render_member_prompt(manifest: dict[str, Any], member: dict[str, Any]) -> str:
     shared = manifest["shared"]
+    collaboration_lines: list[str] = []
+    collaboration = shared.get("collaboration")
+    if isinstance(collaboration, dict):
+        collaboration_lines = [
+            "",
+            "## Parent collaboration contract",
+            f"Mode: {collaboration['mode']}",
+            f"Context policy: {collaboration['context_policy']}",
+            "Before editing:",
+            *[f"- {item}" for item in collaboration["before_edit"]],
+            f"Question policy: {collaboration['question_policy']}",
+            "Required parent handoff fields:",
+            *[f"- {field}" for field in collaboration["handoff_fields"]],
+            "If remote facts are missing, send the exact question to team-lead rather than guessing.",
+        ]
+    progress_lines: list[str] = []
+    progress = shared.get("progress_contract")
+    if isinstance(progress, dict):
+        progress_lines = [
+            "",
+            "## Required babystep evidence",
+            f"Format: {progress['evidence_format']}",
+            *[
+                f"Emit exactly one `PROGRESS {step} | status=... | evidence=...` line before handoff; use not_applicable only with a concrete explanation."
+                for step in progress["steps"]
+            ],
+            "Missing, vague, or blocked evidence fails the parent receipt closed.",
+        ]
     return "\n".join([
         "## Claude A2A native team member task",
         f"Team: {manifest['team_name']}",
@@ -328,6 +356,8 @@ def render_member_prompt(manifest: dict[str, Any], member: dict[str, Any]) -> st
         "",
         "## Bounded inputs",
         *[f"- {item['path']} (sha256 {item['sha256']}):\n{item['excerpt']}" for item in shared.get("inputs", [])],
+        *collaboration_lines,
+        *progress_lines,
         "",
         "## Bounded profile context",
         *( [f"- Skill {skill_ref}:\n{content}" for skill_ref, content in shared.get("profile_context", {}).get("skills", {}).items()] or ["- No reusable skills supplied."] ),
@@ -339,7 +369,7 @@ def render_member_prompt(manifest: dict[str, Any], member: dict[str, Any]) -> st
         "## Constraints",
         *[f"- {constraint}" for constraint in member.get("constraints", shared["constraints"])],
         "",
-        "When finished, send exactly one plain-text message to team-lead beginning with `A2A_RESULT `, followed by a concise report of actual work, commands and exit codes, files changed, risks, and unmet criteria. Then remain idle. Do not claim checks you did not run.",
+        "When finished, send exactly one plain-text message to team-lead beginning with `A2A_RESULT `, followed by one progress line for every required step, then the required parent handoff fields, actual work, commands and exit codes, files changed, risks, and unmet criteria. Then remain idle. Do not claim checks you did not run.",
     ])
 
 

@@ -81,6 +81,42 @@ APIs are durable local primitives, not proof of that end-to-end behavior.
   successful team review therefore used explicit `transport: cli-fallback`; it
   must not be reported as a native Agent Team run.
 
+## 2026-08-23 remote collaboration and Sol-context hardening
+
+- Claude A2A packets now carry a digest-linked, size-limited
+  `collaboration` contract. It requires the remote worker to state observable
+  remote state, assumptions, exact `questions_for_orchestrator`, a
+  `recommended_next_prompt`, scope, verification evidence, and blockers. The
+  contract explicitly limits the exchange to declared inputs and target paths;
+  transcripts and repository dumps remain rejected.
+- The same contract is rendered into single-worker, native-team, and existing
+  remote-MCP prompts. Parent receipts retain the bounded context inputs, packet
+  digest, adapter authority, and worker handoff so the orchestrator can form a
+  next prompt without guessing at the remote machine's unseen codebase.
+- Before Sol runs, the parent review prompt now includes task constraints,
+  success criteria, declared verification commands, bounded input excerpts and
+  hashes, the collaboration contract, worker handoff, and verification
+  authority. Deterministic parent-owned verification remains a separate gate.
+- A fresh current-tree verifier bridge accepted the new packet but Claude CLI
+  returned no result. The job left HEAD/content/status unchanged and is
+  recorded as inconclusive; this is a runtime Claude availability failure, not
+  evidence that the contract was accepted by an external reviewer.
+
+## 2026-08-23 babystep evidence enforcement
+
+- Claude task packets now carry a bounded `babystep-evidence` contract with
+  `inspect`, `plan`, `execute`, `verify`, and `handoff` steps. Each step requires
+  an exact `PROGRESS <step> | status=... | evidence=...` line; `not_applicable`
+  still requires a concrete explanation.
+- The A2A native MCP path, CLI fallback receipts, parent Claude adapter, and
+  existing remote MCP adapter all fail closed when a required step is missing or
+  marked `blocked`. The parsed evidence is retained in the receipt and passed
+  into the Sol review prompt before review eligibility.
+- This closes the specific failure mode where a worker returns no useful work or
+  verification but the verifier receives an apparently successful handoff. It
+  does not prove Claude produced good work; it proves the handoff cannot be
+  accepted without step-level evidence.
+
 ## Feature inventory
 
 ## Intelligence escalation status
@@ -111,7 +147,7 @@ path now invokes the same read-only gate automatically.
 | Sol reviewer lane | Conditional | [`src/agent_relay/codex_review.py`](../../src/agent_relay/codex_review.py), [`src/agent_relay/acceptance.py`](../../src/agent_relay/acceptance.py) | Read-only `gpt-5.6-sol` review; environment readiness must be deeper than executable presence. |
 | Antigravity lane | Conditional | [`src/agent_relay/agy_antigravity.py`](../../src/agent_relay/agy_antigravity.py) | Good specialist boundary; accept-edits needs stronger workspace/security policy. |
 | Lane registry/doctor | Implemented locally; readiness partial | [`src/agent_relay/lanes.py`](../../src/agent_relay/lanes.py) | Readiness distinguishes ready/degraded/blocked/unknown and has source/tests; Codex/AGY still need invocation/auth smoke. |
-| Remote A2A/MCP task API | Implemented locally/one-PC LAN | [`src/agent_relay/control.py`](../../src/agent_relay/control.py), [`src/agent_relay/claude_task.py`](../../src/agent_relay/claude_task.py), [`src/agent_relay/claude_mcp.py`](../../src/agent_relay/claude_mcp.py), [`src/agent_relay/mcp.py`](../../src/agent_relay/mcp.py), and `serve`/`mcp`/lifecycle CLI | Versioned authenticated coordinator, direct remote Claude A2A dispatch with parent-owned verification, live existing-Claude-MCP dispatch, and an MCP façade work in local acceptance; one-PC `10.0.0.149` evidence is recorded, physical two-PC proof remains unclaimed. |
+| Remote A2A/MCP task API | Implemented locally/one-PC LAN | [`src/agent_relay/control.py`](../../src/agent_relay/control.py), [`src/agent_relay/claude_task.py`](../../src/agent_relay/claude_task.py), [`src/agent_relay/claude_mcp.py`](../../src/agent_relay/claude_mcp.py), [`src/agent_relay/mcp.py`](../../src/agent_relay/mcp.py), and `serve`/`mcp`/lifecycle CLI | Versioned authenticated coordinator, digest-linked bounded collaboration handoff, direct remote Claude A2A dispatch with parent-owned verification, live existing-Claude-MCP dispatch, and an MCP façade work in local acceptance; one-PC `10.0.0.149` evidence is recorded, physical two-PC proof remains unclaimed. |
 | Agent Cards/registry | Implemented locally | [`src/agent_relay/protocol.py`](../../src/agent_relay/protocol.py), SQLite registry, `/agents`, `/tasks/claim` | Registration, scoped worker identity, filtered discovery, heartbeats, rotation, revocation, server-side workspace-policy enforcement, and coordinator-owned priority/deadline claiming are covered. |
 | Durable job store | Implemented locally | [`src/agent_relay/store.py`](../../src/agent_relay/store.py) | SQLite WAL persistence and coordinator restart recovery are covered; deployment, backup, and retention policy remain. |
 | Leases/idempotency | Implemented locally/one-PC LAN | SQLite lease table and [`scripts/acceptance_control_plane.py`](../../scripts/acceptance_control_plane.py) | Duplicate submit, 10.x lease ownership/renewal, stale-owner rejection, and restart reconnect pass; physical multi-worker recovery remains. |

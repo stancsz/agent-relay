@@ -59,7 +59,7 @@ class FakeMCPHandler(BaseHTTPRequestHandler):
                 "jsonrpc": "2.0",
                 "id": body.get("id"),
                 "result": {
-                    "content": [{"type": "text", "text": "exitCode: 0\nremote fixture completed"}],
+                    "content": [{"type": "text", "text": "exitCode: 0\nPROGRESS inspect | status=done | evidence=read value.py\nPROGRESS plan | status=done | evidence=planned bounded inspection\nPROGRESS execute | status=not_applicable | evidence=inspection task has no edit\nPROGRESS verify | status=done | evidence=exitCode: 0\nPROGRESS handoff | status=done | evidence=returned remote fixture completed"}],
                     "isError": self.__class__.fail,
                 },
             }
@@ -126,6 +126,11 @@ def test_claude_mcp_transport_initializes_calls_run_and_marks_remote_authority(f
     assert arguments["model"] == "fixture-model"
     assert "Inspect the remote workspace" in arguments["prompt"]
     assert "value.py" in arguments["prompt"]
+    assert "Remote collaboration contract" in arguments["prompt"]
+    assert "questions_for_orchestrator" in arguments["prompt"]
+    assert "recommended_next_prompt" in arguments["prompt"]
+    assert result.metadata["collaboration_contract"]["mode"] == "bounded-remote"
+    assert result.metadata["remote_worker_handoff"].startswith("exitCode: 0")
 
 
 def test_claude_mcp_transport_rejects_insecure_non_loopback_without_opt_in() -> None:

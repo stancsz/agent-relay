@@ -54,6 +54,8 @@ scenario; that separate gate remains documented in
 | Parent-owned remote Claude verification fix | PASS | `tests/test_claude_task.py` passes; remote patches are scope-checked, applied in a disposable local sandbox, and verified before the Sol gate. Dirty target paths are restored from `HEAD` when possible. |
 | Claude team review for PM gap analysis | PASS (explicit fallback) | Real Claude worker plus isolated verifier completed with `transport: cli-fallback`; native Agent Team tools were not available in Claude Code 2.1.233. |
 | Corrected one-PC retry (`lan-flight-task-v4`) | FAIL-CLOSED | The coordinator completed authenticated claim/lease/renewal and persisted a terminal `WORKER_ERROR` when Claude returned `Server error mid-response`; the untrusted patch artifact was not accepted and neither parent verification nor Sol review ran. |
+| Remote collaboration and Sol-context contract | PASS (Codex-owned) | Packet/prompt/acceptance regression tests pass; bounded inputs, hashes, constraints, verification authority, worker handoff fields, and next-prompt guidance are present. The fresh external Claude verifier job was inconclusive because the CLI returned no result, with no worktree change. |
+| Babystep evidence enforcement | PASS (Codex-owned) | A2A/MCP packets and prompts require five bounded progress lines; receipts parse every line and fail closed on missing/blocked evidence; parent adapter and Sol prompt retain the evidence. Focused regression suite passes. |
 
 The LAN task attempts also produced truthful failed receipts: the first had no
 verification command, a later run exposed a patch-base mismatch between a dirty

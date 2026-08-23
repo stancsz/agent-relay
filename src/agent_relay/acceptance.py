@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 import hashlib
+import json
 import os
 from pathlib import Path
 from typing import Callable
@@ -28,6 +29,7 @@ from .task import DelegationTask
 
 DEFAULT_SOL_REVIEW_MODEL = "gpt-5.6-sol"
 MAX_REVIEW_PATCH_CHARS = 60_000
+MAX_REVIEW_CONTEXT_CHARS = 24_000
 ReviewRunner = Callable[..., CodexReviewResult]
 
 
@@ -54,6 +56,57 @@ def build_candidate_review_prompt(task: DelegationTask, result: DelegationResult
         f"(exit_code={item.exit_code})"
         for item in result.verification
     ) or "[missing]"
+    context_lines: list[str] = []
+    raw_inputs = result.metadata.get("context_inputs", [])
+    if isinstance(raw_inputs, list):
+        remaining = MAX_REVIEW_CONTEXT_CHARS
+        for item in raw_inputs[:16]:
+            if not isinstance(item, dict):
+                continue
+            path = item.get("path")
+            digest = item.get("sha256")
+            excerpt = item.get("excerpt")
+            if not all(isinstance(value, str) for value in (path, digest, excerpt)):
+                continue
+            if remaining <= 0:
+                break
+            selected = excerpt[:remaining]
+            context_lines.append(f"- {path} (sha256 {digest}):\n{selected}")
+            remaining -= len(selected)
+    bounded_context = "\n".join(context_lines) or "[no bounded context inputs supplied]"
+    collaboration = result.metadata.get("collaboration_contract", {})
+    collaboration_handoff = str(result.metadata.get("remote_worker_handoff", result.summary))[:4_000]
+    parsed_handoff = json.dumps(
+        result.metadata.get("collaboration_handoff_fields", {}),
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )[:4_000]
+    runtime_lines = []
+    for key in (
+        "transport",
+        "remote_endpoint",
+        "remote_workspace_path",
+        "verification_authority",
+        "verification_target_baseline",
+        "claude_packet_context_digest",
+    ):
+        value = result.metadata.get(key)
+        if isinstance(value, (str, bool, int, float)):
+            runtime_lines.append(f"- {key}: {value}")
+    runtime_context = "\n".join(runtime_lines) or "- No additional adapter runtime metadata."
+    collaboration_context = json.dumps(
+        collaboration,
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )[:4_000]
+    progress_context = json.dumps(
+        result.metadata.get("progress_evidence", {}),
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )[:6_000]
     return f"""Act as the independent Sol high read-only acceptance reviewer.
 
 Do not edit files, apply patches, commit, push, deploy, or change configuration.
@@ -67,10 +120,34 @@ Task ID: {task.task_id}
 Objective: {task.objective}
 Allowed files: {", ".join(task.allowed_files) or "[none]"}
 Requirements: {"; ".join(task.requirements) or "[none]"}
+Constraints: {"; ".join(task.constraints) or "[none]"}
 Success criteria: {"; ".join(task.success_criteria) or "[none]"}
 Changed files reported by worker: {", ".join(result.files_changed) or "[none]"}
+Declared verification commands: {"; ".join(task.verification) or "[none]"}
 Deterministic verification evidence:
 {verification}
+
+Bounded context inputs supplied to the worker:
+{bounded_context}
+
+Required babystep progress/evidence receipt:
+{progress_context}
+Treat missing_steps, blocked_steps, or unsatisfied progress evidence as a reason
+to reject the candidate. Each step must point to a concrete observed fact,
+decision, changed scope, command/exit code, or handoff fact; worker claims alone
+are not verification.
+
+Remote collaboration contract:
+{collaboration_context}
+
+Worker/orchestrator handoff report:
+{collaboration_handoff}
+
+Parsed handoff fields (best-effort, never a substitute for inspection):
+{parsed_handoff}
+
+Adapter and verification authority:
+{runtime_context}
 
 Candidate patch:
 ```diff

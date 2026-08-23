@@ -21,10 +21,19 @@ MAX_CRITERIA = 12
 MAX_CONSTRAINTS = 16
 MAX_TEAM_MEMBERS = 8
 MAX_SKILL_REFS = 8
+MAX_COLLABORATION_ITEMS = 8
+MAX_PROGRESS_STEPS = 8
 PATH_RE = re.compile(r"^(?![\\/])(?!(?:[.][.])(?:[\\/]|$))[^\x00]+$")
 MEMBER_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,31}$")
 PROFILE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 SKILL_REF_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
+PROGRESS_STEP_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
+PROGRESS_LINE_RE = re.compile(
+    r"^PROGRESS\s+(?P<step>[a-z][a-z0-9_-]{0,31})\s+\|\s*"
+    r"status=(?P<status>done|not_applicable|blocked)\s*\|\s*"
+    r"evidence=(?P<evidence>.+)$",
+    re.IGNORECASE,
+)
 FORBIDDEN_CONTEXT_KEYS = {
     "conversation",
     "conversation_history",
@@ -96,6 +105,101 @@ def _bounded_string_list(value: Any, label: str, maximum_items: int, maximum_cha
     return [_text(item, f"{label}[{index}]", maximum_chars) for index, item in enumerate(value)]
 
 
+def _validate_collaboration(value: Any) -> dict[str, Any]:
+    """Validate the bounded parent/remote-worker collaboration contract."""
+
+    if not isinstance(value, dict):
+        raise ProtocolError("collaboration must be an object")
+    _require_keys(
+        value,
+        {"mode", "context_policy", "before_edit", "handoff_fields", "question_policy"},
+        {"mode", "context_policy", "before_edit", "handoff_fields", "question_policy"},
+        "collaboration",
+    )
+    if value["mode"] != "bounded-remote":
+        raise ProtocolError("collaboration.mode must be 'bounded-remote'")
+    _text(value["context_policy"], "collaboration.context_policy", 300)
+    _bounded_string_list(
+        value["before_edit"],
+        "collaboration.before_edit",
+        MAX_COLLABORATION_ITEMS,
+        MAX_TEXT_CHARS,
+    )
+    _bounded_string_list(
+        value["handoff_fields"],
+        "collaboration.handoff_fields",
+        MAX_COLLABORATION_ITEMS,
+        120,
+    )
+    _text(value["question_policy"], "collaboration.question_policy", MAX_TEXT_CHARS)
+    return value
+
+
+def _validate_progress_contract(value: Any) -> dict[str, Any]:
+    """Validate the required per-step progress/evidence contract."""
+
+    if not isinstance(value, dict):
+        raise ProtocolError("progress_contract must be an object")
+    _require_keys(
+        value,
+        {"mode", "steps", "evidence_format"},
+        {"mode", "steps", "evidence_format"},
+        "progress_contract",
+    )
+    if value["mode"] != "babystep-evidence":
+        raise ProtocolError("progress_contract.mode must be 'babystep-evidence'")
+    steps = _bounded_string_list(
+        value["steps"],
+        "progress_contract.steps",
+        MAX_PROGRESS_STEPS,
+        32,
+    )
+    if not steps:
+        raise ProtocolError("progress_contract.steps must not be empty")
+    if len(set(steps)) != len(steps) or any(not PROGRESS_STEP_RE.fullmatch(step) for step in steps):
+        raise ProtocolError("progress_contract.steps must be unique safe identifiers")
+    _text(value["evidence_format"], "progress_contract.evidence_format", 1_000)
+    return value
+
+
+def parse_progress_evidence(text: str, steps: list[str] | tuple[str, ...]) -> dict[str, dict[str, str]]:
+    """Parse exact, bounded progress lines from a Claude report."""
+
+    allowed = set(steps)
+    parsed: dict[str, dict[str, str]] = {}
+    for raw_line in str(text or "").splitlines():
+        match = PROGRESS_LINE_RE.match(raw_line.strip())
+        if not match or match.group("step") not in allowed:
+            continue
+        evidence = match.group("evidence").strip()
+        if evidence:
+            parsed[match.group("step")] = {
+                "status": match.group("status").lower(),
+                "evidence": evidence[:2_000],
+            }
+    return parsed
+
+
+def progress_evidence_satisfied(text: str, contract: dict[str, Any] | None) -> dict[str, Any]:
+    """Return an auditable pass/fail summary for a progress contract."""
+
+    if not isinstance(contract, dict):
+        return {"required": False, "satisfied": True, "missing_steps": [], "evidence": {}}
+    steps = contract.get("steps", [])
+    parsed = parse_progress_evidence(str(text or ""), steps if isinstance(steps, list) else [])
+    missing = [step for step in steps if step not in parsed]
+    blocked = [step for step, item in parsed.items() if item.get("status") == "blocked"]
+    invalid = [step for step, item in parsed.items() if item.get("status") not in {"done", "not_applicable", "blocked"}]
+    return {
+        "required": True,
+        "satisfied": not missing and not blocked and not invalid,
+        "missing_steps": missing,
+        "blocked_steps": blocked,
+        "invalid_steps": invalid,
+        "evidence": parsed,
+    }
+
+
 def validate_task(packet: Any) -> dict[str, Any]:
     if not isinstance(packet, dict):
         raise ProtocolError("task must be a JSON object")
@@ -105,7 +209,7 @@ def validate_task(packet: Any) -> dict[str, Any]:
     _require_keys(
         packet,
         {"protocol", "task_id", "caller_role", "target_role", "operation", "workspace", "objective", "acceptance_criteria", "constraints", "inputs", "context_digest"},
-        {"protocol", "task_id", "caller_role", "target_role", "operation", "workspace", "objective", "acceptance_criteria", "constraints", "verification", "inputs", "team", "profile", "goal_id", "skill_refs", "memory_query", "remember", "expected_change", "context_digest"},
+        {"protocol", "task_id", "caller_role", "target_role", "operation", "workspace", "objective", "acceptance_criteria", "constraints", "verification", "inputs", "team", "profile", "goal_id", "skill_refs", "memory_query", "remember", "expected_change", "collaboration", "progress_contract", "context_digest"},
         "task",
     )
     if packet["protocol"] != PROTOCOL:
@@ -194,6 +298,10 @@ def validate_task(packet: Any) -> dict[str, Any]:
     _text(packet["objective"], "objective", MAX_OBJECTIVE_CHARS)
     _bounded_string_list(packet["acceptance_criteria"], "acceptance_criteria", MAX_CRITERIA, MAX_TEXT_CHARS)
     _bounded_string_list(packet["constraints"], "constraints", MAX_CONSTRAINTS, MAX_TEXT_CHARS)
+    if "collaboration" in packet:
+        _validate_collaboration(packet["collaboration"])
+    if "progress_contract" in packet:
+        _validate_progress_contract(packet["progress_contract"])
     if "verification" in packet:
         _bounded_string_list(packet["verification"], "verification", MAX_CRITERIA, MAX_TEXT_CHARS)
     inputs = packet["inputs"]
@@ -256,7 +364,7 @@ def validate_result(result: Any) -> dict[str, Any]:
     return result
 
 
-def build_task(*, task_id: str, target_role: str, operation: str, workspace_path: str = ".", target_paths: list[str] | None = None, objective: str, acceptance_criteria: list[str], constraints: list[str], inputs: list[dict[str, str]], team: dict[str, Any] | None = None, profile: str = "default", goal_id: str | None = None, skill_refs: list[str] | None = None, memory_query: str | None = None, remember: bool | None = None, expected_change: bool | None = None) -> dict[str, Any]:
+def build_task(*, task_id: str, target_role: str, operation: str, workspace_path: str = ".", target_paths: list[str] | None = None, objective: str, acceptance_criteria: list[str], constraints: list[str], inputs: list[dict[str, str]], team: dict[str, Any] | None = None, profile: str = "default", goal_id: str | None = None, skill_refs: list[str] | None = None, memory_query: str | None = None, remember: bool | None = None, expected_change: bool | None = None, collaboration: dict[str, Any] | None = None, progress_contract: dict[str, Any] | None = None) -> dict[str, Any]:
     packet: dict[str, Any] = {
         "protocol": PROTOCOL,
         "task_id": task_id,
@@ -282,5 +390,9 @@ def build_task(*, task_id: str, target_role: str, operation: str, workspace_path
         packet["remember"] = remember
     if expected_change is not None:
         packet["expected_change"] = expected_change
+    if collaboration is not None:
+        packet["collaboration"] = collaboration
+    if progress_contract is not None:
+        packet["progress_contract"] = progress_contract
     packet["context_digest"] = digest_without_context_digest(packet)
     return validate_task(packet)

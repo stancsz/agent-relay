@@ -22,7 +22,7 @@ for line in sys.stdin:
             }]
         }
     elif method == "tools/call":
-        result = {"content": [{"type": "text", "text": "FAKE_MCP_AGENT_OK"}]}
+        result = {"content": [{"type": "text", "text": "FAKE_MCP_AGENT_OK\nPROGRESS inspect | status=done | evidence=loaded declared inputs\nPROGRESS plan | status=done | evidence=selected bounded task plan\nPROGRESS execute | status=not_applicable | evidence=fixture performs no edit\nPROGRESS verify | status=done | evidence=fake transport returned exit 0\nPROGRESS handoff | status=done | evidence=returned bounded fixture receipt"}]}
     else:
         result = {}
     sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}) + "\n")
