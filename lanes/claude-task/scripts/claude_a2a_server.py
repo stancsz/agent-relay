@@ -181,7 +181,11 @@ def render_prompt(task: dict[str, Any], profile_context: dict[str, Any] | None =
 
 
 @contextmanager
-def isolated_cli_verifier_workspace(workspace: Path, include_paths: list[str] | None = None):
+def isolated_cli_verifier_workspace(
+    workspace: Path,
+    include_paths: list[str] | None = None,
+    heartbeat: Any = None,
+):
     """Yield a disposable copy for a CLI verifier session.
 
     Claude's ``Bash`` tool is intentionally available to verifiers so they can
@@ -194,6 +198,8 @@ def isolated_cli_verifier_workspace(workspace: Path, include_paths: list[str] | 
     temp_root = Path(tempfile.mkdtemp(prefix="claude-a2a-verifier-"))
     verifier_workspace = temp_root / "workspace"
     try:
+        if heartbeat:
+            heartbeat()
         if include_paths:
             verifier_workspace.mkdir(parents=True, exist_ok=True)
             for relative in dict.fromkeys(include_paths):
@@ -204,6 +210,8 @@ def isolated_cli_verifier_workspace(workspace: Path, include_paths: list[str] | 
                     shutil.copy2(source, destination)
                 elif source.is_dir():
                     shutil.copytree(source, destination, dirs_exist_ok=True)
+                if heartbeat:
+                    heartbeat()
         else:
             shutil.copytree(
                 workspace,
@@ -218,6 +226,8 @@ def isolated_cli_verifier_workspace(workspace: Path, include_paths: list[str] | 
                     ".ruff_cache",
                 ),
             )
+            if heartbeat:
+                heartbeat()
         for args in (
             ["init", "--quiet"],
             ["config", "user.name", "Agent Relay"],
@@ -232,10 +242,13 @@ def isolated_cli_verifier_workspace(workspace: Path, include_paths: list[str] | 
                 encoding="utf-8",
                 errors="replace",
                 capture_output=True,
+                timeout=30,
             )
             if process.returncode != 0:
                 detail = (process.stderr or process.stdout).strip()[:500]
                 raise RuntimeError(f"temporary verifier git setup failed: {detail}")
+            if heartbeat:
+                heartbeat()
         yield verifier_workspace
     finally:
         def remove_readonly(function, path, _exc_info):
@@ -1003,7 +1016,11 @@ class A2AState:
                 )
                 verifier_include_paths.extend(objective_paths)
             try:
-                with isolated_cli_verifier_workspace(workspace, verifier_include_paths) as verifier_workspace:
+                with isolated_cli_verifier_workspace(
+                    workspace,
+                    verifier_include_paths,
+                    heartbeat=heartbeat,
+                ) as verifier_workspace:
                     verifier_isolated = True
                     receipt, returncode = self._run_cli_delegate_once(
                         verifier_workspace,
