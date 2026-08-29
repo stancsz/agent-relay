@@ -1,3 +1,5 @@
+model_verbosity = "low"
+model_reasoning_summary = "concise"
 [agents]
 # Keep the implementation/reviewer pair bounded by default.
 max_concurrent_threads_per_session = 2

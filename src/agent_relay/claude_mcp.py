@@ -26,6 +26,7 @@ from .claude_task import (
     progress_evidence_satisfied,
     remote_collaboration_contract,
 )
+from .prompt_policy import HIGH_AGENCY_GUIDANCE
 from .result import DelegationResult, ResultStatus
 from .task import DelegationTask
 
@@ -178,6 +179,7 @@ def _prompt(task: DelegationTask) -> str:
     collaboration = remote_collaboration_contract()
     progress = babystep_progress_contract()
     lines = [
+        HIGH_AGENCY_GUIDANCE,
         "You are executing one bounded task through Agent Relay.",
         f"Objective: {task.objective}",
         "Write scope: " + (", ".join(task.allowed_files) if task.allowed_files else "none; do not modify files"),

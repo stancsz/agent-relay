@@ -97,9 +97,10 @@ def remote_collaboration_contract() -> dict[str, Any]:
         "mode": "bounded-remote",
         "context_policy": "declared-inputs-and-target-paths-only",
         "before_edit": [
-            "Summarize the observable remote state and relevant assumptions from the declared inputs and target paths.",
+            "First identify the intended outcome, inspect all declared inputs and target paths, and check relevant local evidence and edge cases within scope.",
+            "Do not ask for facts that the remote workspace can reveal safely; if the first inspection path fails, use one bounded alternative or revise the hypothesis when evidence permits.",
             "Identify missing facts that could change the safe implementation or verification decision.",
-            "Ask the parent orchestrator an exact question and stop/mark blocked when a missing fact is material; do not guess.",
+            "Ask the parent orchestrator an exact question and stop/mark blocked only when a missing fact remains material; do not guess.",
         ],
         "handoff_fields": [
             "observed_remote_state",
@@ -110,7 +111,7 @@ def remote_collaboration_contract() -> dict[str, Any]:
             "verification_evidence",
             "blockers",
         ],
-        "question_policy": "Questions must be concrete, answerable from the parent machine or an explicitly requested bounded input; never request a repository dump or transcript.",
+        "question_policy": "After relevant exploration, questions must be concrete and answerable from the parent machine or an explicitly requested bounded input, and must identify the material safety, authority, scope, or acceptance decision they affect; never request a repository dump or transcript.",
     }
 
 

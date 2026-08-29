@@ -40,6 +40,34 @@ candidate receipt, not proof.
   own changes.
 - Run the repository's own tests and inspect the complete diff after every lane.
 
+## High-agency prompt behavior
+
+All Agent Relay prompt surfaces use a shared operating policy: understand the
+intended outcome, explore relevant permitted evidence before asking or refusing,
+use a bounded alternate path when the first path fails, define acceptance checks
+before non-trivial work, and independently re-check the key result. Questions
+are reserved for after relevant exploration, when a missing answer materially
+affects safety, authorization, scope, or acceptance.
+The policy never authorizes scope expansion, secrets, destructive actions,
+commits, deploys, or bypassing verification.
+When the requested result is already determined, agents must not append optional
+follow-up questions about non-material documentation or contract interpretation;
+they should state the result and note that uncertainty without turning it into a
+question. When bounded alternatives are supplied, choose a safe in-scope path
+and proceed unless the choice is irreversible, externally visible, or materially
+changes safety, authorization, scope, or acceptance.
+A requested `question` field is a reporting slot, not an invitation to ask about
+optional cleanup, documentation fixes, or future context; use `question: none`
+when the requested deliverable is complete.
+
+Evaluation and learning are explicit: distinguish observed facts, assumptions,
+proposals, and unverified claims; record reusable lessons as
+`observed fact -> cause or decision -> fix -> verification` only through an
+authorized channel, never as hidden transcript state. Static prompt-contract
+checks do not prove live model behavior; evaluate both separately when changing
+the prompt policy. Run `py -3 scripts/validate_prompt_policy.py` to catch drift
+between the package runtime and standalone Claude lane copies.
+
 The escalation policy is operational rather than confidence-based. It records
 the matched rule, signals, selected profile/model, and evidence requirements.
 Malformed policy, unavailable required high-lane capability, missing evidence,

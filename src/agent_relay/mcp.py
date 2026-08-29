@@ -11,6 +11,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 import hmac
 import json
+import math
 import secrets
 import threading
 import time
@@ -20,6 +21,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import quote
 
+from .agent_invocation import AgentInvocationConfig, AgentInvoker, AGENT_MODES, AGENT_NAMES
 from .control import ControlPlaneError, request_json
 from .protocol import JobState, TERMINAL_STATES
 from .task import DelegationTask
@@ -30,7 +32,7 @@ MCP_PROTOCOL_VERSION = "2025-03-26"
 MCP_MAX_BODY_BYTES = 8 * 1024 * 1024
 MCP_MAX_TOOL_TEXT = 32_000
 MCP_MAX_WATCH_SECONDS = 300.0
-MCP_SERVER_INFO = {"name": "agent-relay-mcp", "version": "0.1.0"}
+MCP_SERVER_INFO = {"name": "agent-relay-mcp", "version": "0.2.0"}
 
 
 class MCPInputError(ValueError):
@@ -148,6 +150,50 @@ def _tool_specs(max_workers: int) -> list[dict[str, Any]]:
         "description": "A complete bounded Agent Relay task contract.",
     }
     return [
+        {
+            "name": "agent_status",
+            "description": "Describe local Gemini, Codex, and Claude CLI discovery without starting an agent or claiming authentication.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "invoke_agent",
+            "description": "Invoke one installed Gemini, Codex, or Claude Code CLI with a bounded prompt. Read-only is the default; direct workspace writes require explicit server opt-in.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "agent": {
+                        "type": "string",
+                        "enum": [*AGENT_NAMES],
+                        "description": "Logical agent lane. Gemini auto-selects the usable direct Gemini or agy Gemini-backed transport.",
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "description": "Bounded instruction; no more than 24000 characters.",
+                    },
+                    "workdir": {
+                        "type": "string",
+                        "description": "Existing directory under the MCP agent workspace root; defaults to the root.",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": [*AGENT_MODES],
+                        "default": "read-only",
+                    },
+                    "model": {"type": "string", "description": "Optional backend-specific model override."},
+                    "timeout_seconds": {
+                        "type": "number",
+                        "minimum": 1,
+                        "description": "Per-call timeout, capped by the server configuration.",
+                    },
+                },
+                "required": ["agent", "prompt"],
+                "additionalProperties": False,
+            },
+        },
         {
             "name": "submit",
             "description": "Submit one durable bounded task or a safe read-only prompt to Agent Relay; execution is owned by an enrolled compatible worker.",
@@ -311,6 +357,7 @@ class RelayMCPServer(ThreadingHTTPServer):
         max_workers: int = 8,
         request_timeout: float = 30.0,
         local_worker: WorkerConfig | None = None,
+        agent_invoker: AgentInvoker | None = None,
     ) -> None:
         self.coordinator_url = coordinator_url.rstrip("/")
         self.coordinator_token = coordinator_token
@@ -318,6 +365,8 @@ class RelayMCPServer(ThreadingHTTPServer):
         self.max_workers = max_workers
         self.request_timeout = request_timeout
         self.local_worker = local_worker
+        self.agent_invoker = agent_invoker or AgentInvoker(AgentInvocationConfig.from_env())
+        self.agent_slots = threading.BoundedSemaphore(self.agent_invoker.config.max_concurrency)
         self.sessions: dict[str, float] = {}
         self.sessions_lock = threading.Lock()
         super().__init__(address, RelayMCPRequestHandler)
@@ -549,7 +598,65 @@ class RelayMCPRequestHandler(BaseHTTPRequestHandler):
                 payload[field] = args[field]
         return self.server.coordinator_request("POST", f"/chains/{quote(chain_id, safe='')}/steps", payload)
 
+    def _invoke_agent(self, args: Mapping[str, Any]) -> dict[str, Any]:
+        agent = _require_text(args.get("agent"), "agent")
+        prompt = _require_text(args.get("prompt"), "prompt")
+        mode = args.get("mode", "read-only")
+        if not isinstance(mode, str):
+            raise MCPInputError("mode must be a string")
+        timeout_raw = args.get("timeout_seconds")
+        if isinstance(timeout_raw, bool):
+            raise MCPInputError("timeout_seconds must be a number")
+        try:
+            timeout_seconds = (
+                self.server.agent_invoker.config.timeout_seconds
+                if timeout_raw is None
+                else float(timeout_raw)
+            )
+        except (TypeError, ValueError) as exc:
+            raise MCPInputError("timeout_seconds must be a number") from exc
+        if (
+            not math.isfinite(timeout_seconds)
+            or timeout_seconds <= 0
+            or timeout_seconds > self.server.agent_invoker.config.timeout_seconds
+        ):
+            raise MCPInputError(
+                "timeout_seconds must be positive and no greater than the configured agent timeout"
+            )
+        acquired = self.server.agent_slots.acquire(timeout=min(timeout_seconds, 5.0))
+        if not acquired:
+            return _tool_result(
+                {
+                    "agent": agent,
+                    "status": "FAILED",
+                    "summary": "agent concurrency limit reached",
+                    "runtime": {"failure_kind": "agent_concurrency_limit"},
+                },
+                is_error=True,
+            )
+        try:
+            try:
+                result = self.server.agent_invoker.invoke(
+                    agent,
+                    prompt,
+                    workdir=args.get("workdir"),
+                    mode=mode,
+                    model=args.get("model"),
+                    timeout_seconds=timeout_seconds,
+                )
+            except (TypeError, ValueError) as exc:
+                raise MCPInputError(str(exc)) from exc
+            return _tool_result(result.to_dict(), is_error=not result.passed)
+        finally:
+            self.server.agent_slots.release()
+
     def _call_tool(self, name: str, args: Mapping[str, Any]) -> dict[str, Any]:
+        if name == "agent_status":
+            if args:
+                raise MCPInputError("agent_status does not accept arguments")
+            return _tool_result(self.server.agent_invoker.status())
+        if name == "invoke_agent":
+            return self._invoke_agent(args)
         if name == "submit":
             return _tool_result(self._submit(args))
         if name in {"run", "Agent"}:
@@ -663,6 +770,8 @@ def create_mcp_server(
     max_workers: int = 8,
     request_timeout: float = 30.0,
     local_worker: WorkerConfig | None = None,
+    agent_invoker: AgentInvoker | None = None,
+    agent_config: AgentInvocationConfig | None = None,
 ) -> RelayMCPServer:
     if host not in {"127.0.0.1", "localhost", "::1"} and not auth_token:
         raise ValueError("non-loopback MCP binds require an auth token")
@@ -676,6 +785,7 @@ def create_mcp_server(
         max_workers=max_workers,
         request_timeout=request_timeout,
         local_worker=local_worker,
+        agent_invoker=agent_invoker or (AgentInvoker(agent_config) if agent_config else None),
     )
 
 
@@ -689,6 +799,8 @@ def serve_mcp_forever(
     max_workers: int = 8,
     request_timeout: float = 30.0,
     local_worker: WorkerConfig | None = None,
+    agent_invoker: AgentInvoker | None = None,
+    agent_config: AgentInvocationConfig | None = None,
 ) -> None:
     server = create_mcp_server(
         host=host,
@@ -699,6 +811,8 @@ def serve_mcp_forever(
         max_workers=max_workers,
         request_timeout=request_timeout,
         local_worker=local_worker,
+        agent_invoker=agent_invoker,
+        agent_config=agent_config,
     )
     try:
         server.serve_forever(poll_interval=0.2)

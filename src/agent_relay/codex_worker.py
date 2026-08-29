@@ -24,6 +24,7 @@ from .patch import (
     replacement_diff,
 )
 from .codex_proxy import OllamaCompatProxy
+from .prompt_policy import HIGH_AGENCY_GUIDANCE
 from .ollama import (
     DEFAULT_OLLAMA_MODEL,
     OllamaClient,
@@ -214,6 +215,7 @@ def build_codex_prompt(
     """Build the bounded execution contract sent to Codex's local-model loop."""
 
     sections = [
+        HIGH_AGENCY_GUIDANCE,
         "You are the execution harness for one bounded local coding task.",
         "Work directly in the current disposable Git sandbox using your tools.",
         "Implement only the task below. Do not make architecture decisions,"

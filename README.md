@@ -527,13 +527,21 @@ agent-relay mcp --coordinator-url http://127.0.0.1:8788 `
   --token $env:AR_RELAY_AUTH_TOKEN --port 8789
 ~~~
 
-The `/mcp` endpoint exposes `submit` (plus `run`/`Agent` Claude-MCP-compatible
-aliases), bounded `dispatch`, `inspect`, `watch`, `cancel`, and `chain_submit`.
-Calls may provide a complete bounded task contract or a natural-language
-`prompt`. Prompt calls become durable tasks and are read-only by default;
-callers must explicitly provide `allowed_files` before edits are authorized.
-`dispatch` submits durable tasks with bounded concurrency and can optionally
-wait for terminal snapshots.
+The `/mcp` endpoint exposes `agent_status` and `invoke_agent` for bounded,
+direct local invocation of Gemini, Codex, and Claude Code, as well as `submit`
+(plus `run`/`Agent` Claude-MCP-compatible aliases), bounded `dispatch`,
+`inspect`, `watch`, `cancel`, and `chain_submit`. Direct calls are read-only by
+default and return a normalized transport receipt. The logical `gemini` lane
+automatically uses the installed `agy` Gemini-backed CLI when the direct
+Gemini CLI lacks its required Google Cloud project configuration. See
+[`docs/AGENT_MCP.md`](docs/AGENT_MCP.md) for the tool contract, environment
+variables, and current readiness evidence.
+
+Calls to the durable surface may provide a complete bounded task contract or a
+natural-language `prompt`. Prompt calls become durable tasks and are read-only
+by default; callers must explicitly provide `allowed_files` before edits are
+authorized. `dispatch` submits durable tasks with bounded concurrency and can
+optionally wait for terminal snapshots.
 Keep the façade on loopback unless a bearer token and HTTPS-protected
 coordinator path are configured.
 

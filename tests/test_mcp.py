@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 
 import pytest
 
+from agent_relay.agent_invocation import AgentInvocationConfig, AgentInvocationResult
 from agent_relay.control import create_server
 from agent_relay.mcp import _task_from_arguments, create_mcp_server
 from agent_relay.result import DelegationResult, ResultStatus, VerificationResult
@@ -26,7 +27,12 @@ def task_payload(task_id: str = "mcp-task") -> dict:
     }
 
 
-def start_servers(tmp_path, *, local_worker: WorkerConfig | None = None):
+def start_servers(
+    tmp_path,
+    *,
+    local_worker: WorkerConfig | None = None,
+    agent_invoker=None,
+):
     coordinator = create_server(
         host="127.0.0.1",
         port=0,
@@ -44,6 +50,7 @@ def start_servers(tmp_path, *, local_worker: WorkerConfig | None = None):
         auth_token="mcp-secret",
         max_workers=2,
         local_worker=local_worker,
+        agent_invoker=agent_invoker,
     )
     mcp_thread = Thread(target=mcp.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     mcp_thread.start()
@@ -111,6 +118,8 @@ def test_mcp_surface_advertises_durable_tools_and_rejects_unknown_sessions(tmp_p
         status, _, listed = post(url, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, session_id=session_id)
         assert status == 200
         assert {item["name"] for item in listed["result"]["tools"]} >= {
+            "agent_status",
+            "invoke_agent",
             "submit",
             "run",
             "Agent",
@@ -123,6 +132,86 @@ def test_mcp_surface_advertises_durable_tools_and_rejects_unknown_sessions(tmp_p
         status, _, unknown = post(url, {"jsonrpc": "2.0", "id": 3, "method": "tools/list"}, session_id="unknown-session")
         assert status == 200
         assert unknown["error"]["code"] == -32600
+    finally:
+        stop_servers(*servers[:4])
+
+
+def test_mcp_direct_agent_tools_return_status_and_normalized_receipt(tmp_path) -> None:
+    class FakeInvoker:
+        config = AgentInvocationConfig(
+            workspace_root=tmp_path,
+            timeout_seconds=10,
+            max_output_chars=4_000,
+            max_concurrency=1,
+        )
+
+        def status(self):
+            return {"agents": [{"agent": "gemini", "readiness": "ready"}]}
+
+        def invoke(self, agent, prompt, **kwargs):
+            assert agent == "codex"
+            assert prompt == "Return a bounded answer."
+            assert kwargs["mode"] == "read-only"
+            return AgentInvocationResult(
+                agent=agent,
+                transport="codex-cli",
+                status="PASS",
+                summary="codex completed",
+                response="CODEX_OK",
+                return_code=0,
+                duration_seconds=0.1,
+                runtime={"read_only": True},
+            )
+
+    servers = start_servers(tmp_path, agent_invoker=FakeInvoker())
+    try:
+        _, _, _, _, url = servers
+        session_id = initialize(url)
+        status = call(url, session_id, "agent_status", {})
+        assert status["result"]["structuredContent"]["agents"][0]["readiness"] == "ready"
+        invoked = call(
+            url,
+            session_id,
+            "invoke_agent",
+            {"agent": "codex", "prompt": "Return a bounded answer."},
+        )
+        receipt = invoked["result"]["structuredContent"]
+        assert receipt["status"] == "PASS"
+        assert receipt["response"] == "CODEX_OK"
+    finally:
+        stop_servers(*servers[:4])
+
+
+def test_mcp_direct_agent_write_mode_fails_closed_by_default(tmp_path) -> None:
+    servers = start_servers(tmp_path)
+    try:
+        _, _, _, _, url = servers
+        session_id = initialize(url)
+        rejected = call(
+            url,
+            session_id,
+            "invoke_agent",
+            {"agent": "claude", "prompt": "Edit a file.", "mode": "workspace-write"},
+        )
+        assert rejected["error"]["code"] == -32602
+        assert "workspace-write is disabled" in rejected["error"]["message"]
+    finally:
+        stop_servers(*servers[:4])
+
+
+def test_mcp_direct_agent_rejects_non_finite_timeout(tmp_path) -> None:
+    servers = start_servers(tmp_path)
+    try:
+        _, _, _, _, url = servers
+        session_id = initialize(url)
+        rejected = call(
+            url,
+            session_id,
+            "invoke_agent",
+            {"agent": "claude", "prompt": "Reply.", "timeout_seconds": "NaN"},
+        )
+        assert rejected["error"]["code"] == -32602
+        assert "timeout_seconds" in rejected["error"]["message"]
     finally:
         stop_servers(*servers[:4])
 

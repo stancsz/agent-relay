@@ -1,4 +1,10 @@
 from .delegate import delegate_local
+from .agent_invocation import (
+    AgentInvocationConfig,
+    AgentInvocationError,
+    AgentInvocationResult,
+    AgentInvoker,
+)
 from .result import (
     DelegationResult,
     ResultStatus,
@@ -31,6 +37,10 @@ __all__ = [
     "VerificationResult",
     "WorkerResponse",
     "delegate_local",
+    "AgentInvocationConfig",
+    "AgentInvocationError",
+    "AgentInvocationResult",
+    "AgentInvoker",
     "DelegationDecision",
     "SAFE_TASK_KINDS",
     "TriageConfidence",

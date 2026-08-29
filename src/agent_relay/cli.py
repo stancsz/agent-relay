@@ -13,6 +13,7 @@ import time
 from typing import Any
 from urllib.parse import quote
 
+from .agent_invocation import AgentInvocationConfig
 from .codex_worker import CodexCliConfig, CodexCliError, CodexCliWorker
 from .codex_review import CodexReviewConfig, run_codex_review
 from .acceptance import enforce_acceptance
@@ -162,6 +163,31 @@ def _parser() -> argparse.ArgumentParser:
     mcp.add_argument("--local-worker-model")
     mcp.add_argument("--local-worker-lease-seconds", type=float, default=300.0)
     mcp.add_argument("--local-worker-poll-seconds", type=float, default=1.0)
+    mcp.add_argument(
+        "--agent-repo",
+        type=Path,
+        help="root for direct invoke_agent calls; defaults to AR_MCP_AGENT_REPO or cwd",
+    )
+    mcp.add_argument(
+        "--agent-timeout",
+        type=float,
+        help="default/max timeout for direct agent calls",
+    )
+    mcp.add_argument("--agent-max-output", type=int, help="maximum direct-agent response characters")
+    mcp.add_argument("--agent-concurrency", type=int, help="maximum simultaneous direct-agent calls")
+    mcp.add_argument(
+        "--allow-agent-writes",
+        action="store_true",
+        help="enable explicit invoke_agent mode=workspace-write; read-only is the default",
+    )
+    mcp.add_argument("--gemini-bin", help="override the direct Gemini CLI executable")
+    mcp.add_argument("--codex-bin", help="override the Codex CLI executable")
+    mcp.add_argument("--claude-bin", help="override the Claude Code CLI executable")
+    mcp.add_argument(
+        "--gemini-transport",
+        choices=("auto", "gemini", "agy"),
+        help="Gemini logical-lane transport; auto prefers usable agy when direct Gemini GCA is not configured",
+    )
 
     agents = subparsers.add_parser("agents", help="list or register coordinator agents")
     agents.add_argument("--url", default="http://127.0.0.1:8788")
@@ -854,6 +880,7 @@ def _mcp(args: argparse.Namespace) -> int:
         "coordinator_url": args.coordinator_url,
         "auth_required": bool(args.token),
         "max_workers": args.max_workers,
+        "direct_agents": True,
     }
     try:
         local_worker = None
@@ -872,6 +899,20 @@ def _mcp(args: argparse.Namespace) -> int:
                 poll_seconds=args.local_worker_poll_seconds,
                 claim_next=True,
             )
+        agent_config = AgentInvocationConfig.from_env(
+            workspace_root=args.agent_repo,
+            timeout_seconds=args.agent_timeout,
+            max_output_chars=args.agent_max_output,
+            max_concurrency=args.agent_concurrency,
+            allow_workspace_writes=(True if args.allow_agent_writes else None),
+            gemini_bin=args.gemini_bin,
+            codex_bin=args.codex_bin,
+            claude_bin=args.claude_bin,
+            gemini_transport=args.gemini_transport,
+        )
+        startup["agent_workspace_root"] = str(agent_config.workspace_root)
+        startup["agent_concurrency"] = agent_config.max_concurrency
+        startup["agent_writes_enabled"] = agent_config.allow_workspace_writes
         _control_output(startup)
         serve_mcp_forever(
             host=args.host,
@@ -882,6 +923,7 @@ def _mcp(args: argparse.Namespace) -> int:
             max_workers=args.max_workers,
             request_timeout=args.request_timeout,
             local_worker=local_worker,
+            agent_config=agent_config,
         )
         return 0
     except (OSError, ValueError, ControlPlaneError) as exc:

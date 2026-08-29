@@ -27,6 +27,7 @@ from agent_relay.patch import (
     validate_patch_scope,
 )
 from agent_relay.result import ResultStatus
+from agent_relay.prompt_policy import HIGH_AGENCY_GUIDANCE
 from agent_relay.sandbox import GitSandbox, SandboxError
 from agent_relay.task import DelegationTask
 from agent_relay.verifier import run_verification
@@ -128,6 +129,7 @@ def _write_text(path: Path, value: str) -> None:
 
 def _baseline_prompt(task: DelegationTask, context: str) -> str:
     sections = [
+        HIGH_AGENCY_GUIDANCE,
         "You are the direct Codex-only baseline worker for one bounded coding task.",
         "Work in the current disposable Git repository using your tools.",
         "Implement only this task. Do not make architecture decisions, unrelated cleanup, commits, or changes outside the declared write boundary.",

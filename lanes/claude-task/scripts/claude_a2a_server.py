@@ -32,6 +32,7 @@ from typing import Any
 
 from a2a_protocol import MAX_PACKET_BYTES, MAX_PATCH_CHARS, MAX_TEXT_CHARS, ProtocolError, digest_without_context_digest, progress_evidence_satisfied, validate_task, validate_result
 from bridge_state import ProfileStore, StateError, atomic_write, utc_epoch
+from prompt_policy import with_high_agency_guidance
 
 
 def is_native_capability_failure(value: object) -> bool:
@@ -221,7 +222,7 @@ def render_prompt(task: dict[str, Any], profile_context: dict[str, Any] | None =
             profile_lines.extend([f"### Skill: {skill_ref}", content])
         for memory in profile_context.get("memories", []):
             profile_lines.extend([f"### Memory ({memory.get('kind', 'lesson')})", str(memory.get('text', ''))[:4000]])
-    return "\n".join([
+    return with_high_agency_guidance("\n".join([
         "## Claude A2A isolated task",
         f"Task ID: {task['task_id']}",
         f"Context digest: {task['context_digest']}",
@@ -254,7 +255,7 @@ def render_prompt(task: dict[str, Any], profile_context: dict[str, Any] | None =
         *profile_lines,
         "",
         "Return a concise report with the required parent handoff fields, actual commands and exit codes, files changed, risks, and unmet criteria. Do not claim a check you did not run.",
-    ])
+    ]))
 
 
 def build_cli_delegate_command(

@@ -21,6 +21,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from prompt_policy import with_high_agency_guidance
+
 
 def drain(stream: Any, target: queue.Queue[str]) -> None:
     for line in stream:
@@ -334,7 +336,7 @@ def render_member_prompt(manifest: dict[str, Any], member: dict[str, Any]) -> st
             ],
             "Missing, vague, or blocked evidence fails the parent receipt closed.",
         ]
-    return "\n".join([
+    return with_high_agency_guidance("\n".join([
         "## Claude A2A native team member task",
         f"Team: {manifest['team_name']}",
         f"Member: {member['name']}",
@@ -370,7 +372,7 @@ def render_member_prompt(manifest: dict[str, Any], member: dict[str, Any]) -> st
         *[f"- {constraint}" for constraint in member.get("constraints", shared["constraints"])],
         "",
         "When finished, send exactly one plain-text message to team-lead beginning with `A2A_RESULT `, followed by one progress line for every required step, then the required parent handoff fields, actual work, commands and exit codes, files changed, risks, and unmet criteria. Then remain idle. Do not claim checks you did not run.",
-    ])
+    ]))
 
 
 def run_team(session: McpSession, manifest: dict[str, Any]) -> tuple[str, str | None, list[dict[str, Any]]]:

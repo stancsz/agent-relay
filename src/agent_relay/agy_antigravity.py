@@ -17,6 +17,8 @@ import subprocess
 import time
 from typing import Any, Mapping
 
+from .prompt_policy import HIGH_AGENCY_GUIDANCE, with_high_agency_guidance
+
 from .env import load_dotenv
 
 
@@ -112,14 +114,20 @@ class AgyResult:
 
 
 def build_agy_prompt(prompt: str) -> str:
-    return (
+    prompt_text = prompt.strip()
+    # AgentInvoker may already have added the shared block before routing to
+    # AGY. Remove that known prefix so the helper can put it at the actual
+    # prompt start around the AGY role description without duplication.
+    if prompt_text.startswith(HIGH_AGENCY_GUIDANCE):
+        prompt_text = prompt_text[len(HIGH_AGENCY_GUIDANCE):].lstrip()
+    return with_high_agency_guidance(
         "You are the Google-stack scout/planner in a bounded subagent system. "
         "Focus on evidence-backed guidance for Google products and ecosystems "
         "such as Gemini, Firebase, Android, Google Cloud, browser/UI behavior, "
         "and frontend delivery. Inspect only what is needed. Do not edit files, "
         "commit, push, deploy, access credentials, or claim validation you did "
         "not perform. Return concise recommendations, risks, and concrete local "
-        "checks.\n\nTask:\n" + prompt.strip()
+        "checks.\n\nTask:\n" + prompt_text
     )
 
 

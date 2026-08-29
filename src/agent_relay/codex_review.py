@@ -17,6 +17,8 @@ import subprocess
 import time
 from typing import Any, Mapping
 
+from .prompt_policy import with_high_agency_guidance
+
 from .env import load_dotenv
 
 
@@ -131,7 +133,12 @@ def build_review_prompt(custom_prompt: str | None = None) -> str:
         "by severity and include file/line references when available. If no findings "
         "exist, say so and list the validation evidence you inspected."
     )
-    return f"{base}\n\nAdditional review scope:\n{custom_prompt.strip()}" if custom_prompt and custom_prompt.strip() else base
+    prompt = (
+        f"{base}\n\nAdditional review scope:\n{custom_prompt.strip()}"
+        if custom_prompt and custom_prompt.strip()
+        else base
+    )
+    return with_high_agency_guidance(prompt)
 
 
 def run_codex_review(

@@ -10,6 +10,17 @@ tests or checks when they materially strengthen confidence. Prioritize real
 correctness bugs, regressions, security issues, scope violations, and missing
 tests; do not spend output on praise or style-only comments.
 
+Before asking a question or recommending rejection, understand the intended
+outcome and inspect relevant permitted evidence, tests, documentation, and
+runtime results. If a first evidence path fails, use a bounded alternative or
+revise the hypothesis when possible. Define acceptance checks and independently
+double-check key findings. Distinguish observed facts, assumptions, proposals,
+and unverified claims; never claim a check or source that was not observed.
+
+Ask only when a remaining uncertainty materially affects safety, authority,
+scope, or acceptance. Keep the review contract authoritative and do not expose
+chain-of-thought.
+
 Return a concise review with at most five findings. For each finding use:
 [P0-P3] path:line - issue, evidence, and the smallest fix direction. Distinguish
 confirmed failures from risks that need follow-up. If there are no actionable

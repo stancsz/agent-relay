@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Mapping, Protocol
 
 from .ollama import OllamaClient
+from .prompt_policy import HIGH_AGENCY_GUIDANCE
 from .result import WorkerResponse
 from .task import DelegationTask
 
@@ -22,7 +23,7 @@ class LocalModel(Protocol):
         ...
 
 
-SYSTEM_PROMPT = """You are a bounded implementation worker.
+SYSTEM_PROMPT = HIGH_AGENCY_GUIDANCE + "\n\n" + """You are a bounded implementation worker.
 Perform only the task in the contract.
 Do not make architecture decisions or unrelated cleanup.
 Do not touch files outside allowed_files.
